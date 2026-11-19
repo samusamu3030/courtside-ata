@@ -136,13 +136,22 @@ window.GEN = async function (opts = {}) {
     const light = (daygrid.filter((x) => s4[x.order - 1] >= FROM).length ? daygrid.filter((x) => s4[x.order - 1] >= FROM) : daygrid).slice().sort((a, b) => b.you_open - a.you_open)[0];
     if (light.you_open >= 5 && left > 0) { const dIdx = light.order - 1; const st = wv.filter((w) => w.status === 'Free agent' && w.days.includes(DN[dIdx])).slice(0, 3).map((w) => w.player); moves.push({ kind: 'Swap', move: `${DN[dIdx]}: stream into ${light.you_open} open slots`, why: `Only ${light.you_games} players play on ${light.day}. The day before, drop the weakest bench player and add one who plays that day${st.length ? ': ' + st.join(', ') : ''}. Lock is ${light.lock_myt} MYT.` }); }
     lineup.filter((l) => l.sit.startsWith('Bench')).forEach((l) => moves.push({ kind: 'Lineup', move: `${l.day.slice(0, 3)}: ${l.sit.toLowerCase()}`, why: `More than 10 players play on ${l.day}. Start the 10 with the most value in this build; ${l.sit.replace('Bench ', '')} add the least.` }));
-    me.filter((x) => x.inj === 'OUT' && x.slot !== 13).forEach((x) => moves.push({ kind: 'Lineup', move: `Move ${x.n} to IR`, why: `${x.n} is listed out. Moving him to an IR slot frees a roster spot for a pickup (2 IR slots).` }));
+    // IR: only suggest a move into IR when a slot is free; if IR is full, suggest swapping out a player who is healthy again, else just bench
+    const IR_SLOTS = 2; const onIR = me.filter((x) => x.slot === 13); let irFree = Math.max(0, IR_SLOTS - onIR.length);
+    const backFromIR = onIR.filter((x) => x.inj !== 'OUT');
+    me.filter((x) => x.inj === 'OUT' && x.slot !== 13).forEach((x) => {
+      if (irFree > 0) { irFree--; moves.push({ kind: 'Lineup', move: `Move ${x.n} to IR`, why: `${x.n} is listed out. Moving him to the open IR slot frees a roster spot for a pickup.` }); return; }
+      const back = backFromIR.shift();
+      if (back) moves.push({ kind: 'Lineup', move: `Swap IR: activate ${back.n}, move ${x.n} to IR`, why: `${back.n} is no longer listed out, so he can come off IR and ${x.n} (out) can take his IR slot.` });
+      else moves.push({ kind: 'Lineup', move: `Bench ${x.n} while he's out`, why: `${x.n} is listed out, but both IR slots are taken (${onIR.map((y) => y.n).join(', ')}). Keep him on the bench on game days until he's back.` });
+    });
+    const irFull = onIR.length >= IR_SLOTS;
     if (punts.length) { const pp = me.filter((x) => x.slot !== 13).map((x) => ({ x, w: punts.reduce((s, c) => s + W[c](x.s), 0) })).sort((a, b) => b.w - a.w)[0];
       if (pp && pp.w >= 1) moves.push({ kind: 'Trade', move: `Sell ${pp.x.n}'s ${punts.join(' and ')}`, why: `About ${pp.w.toFixed(1)} of his value per game comes from ${punts.join(' and ')}, which this build punts. A team that needs ${punts.join('/')} should value him more; ask for help in ${CAT.filter((c) => !punts.includes(c) && rk[CAT.indexOf(c)] >= 7).join(', ') || 'the weakest contested category'}.` }); }
     const st2 = roster.find((r) => r.trend === 'up' && r.value >= 2); if (st2) moves.push({ kind: 'Trade', move: `Watch ${st2.player} as a sell-high piece`, why: `He's at ${st2.value_l15 > 0 ? '+' : ''}${st2.value_l15} over the last 15 days vs ${st2.value > 0 ? '+' : ''}${st2.value} for the season. If the run continues, his ESPN rank will rise and he becomes a strong trade chip.` });
     moves.forEach((m, i) => { m.order = i + 1; m.id = 'm' + (i + 1); });
     const injured = me.filter((x) => x.inj !== 'ACTIVE');
-    const injuries = [...injured.map((x, i) => ({ order: i + 1, player: x.n, status: x.inj === 'OUT' ? 'Out' : x.inj === 'DAY_TO_DAY' ? 'Day-to-day' : x.inj.replace(/_/g, ' ').toLowerCase(), note: x.slot === 13 ? 'On IR.' : (x.inj === 'OUT' ? 'Out, not on IR.' : 'Check before the lock.') })), { order: 99, player: 'Everyone else', status: 'Active', note: `No other players on ESPN's injury report (checked ${checked}).` }];
+    const injuries = [...injured.map((x, i) => ({ order: i + 1, player: x.n, status: x.inj === 'OUT' ? 'Out' : x.inj === 'DAY_TO_DAY' ? 'Day-to-day' : x.inj.replace(/_/g, ' ').toLowerCase(), note: x.slot === 13 ? 'On IR.' : (x.inj === 'OUT' ? (irFull ? 'Out; IR is full, so bench him on game days.' : 'Out, not on IR.') : 'Check before the lock.') })), { order: 99, player: 'Everyone else', status: 'Active', note: `No other players on ESPN's injury report (checked ${checked}).` }];
     const likely = matchup.filter((m) => m.plan === 'Likely').map((m) => m.category), toss = matchup.filter((m) => m.plan === 'Toss-up').map((m) => m.category), unl = matchup.filter((m) => m.plan === 'Unlikely').map((m) => m.category);
     const need = Math.max(0, 5 - likely.length);
     const dtd = injured.filter((x) => x.inj === 'DAY_TO_DAY');
