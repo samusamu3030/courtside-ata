@@ -111,9 +111,14 @@ window.GEN = async function (opts = {}) {
   const pv = (n) => 1000 / (Math.exp(0.65 * Math.log(Math.max(1, ADP[n])) + 0.35 * Math.log(CR[n] || 250)) + 20);
   const pkg = (ns) => { const v = ns.map(pv).sort((a, b) => b - a); return v[0] + (v[1] || 0) * 0.4; };
   const TS = [WEEK + 1, WEEK + 2].filter((w) => WEEKS[w]).flatMap(SP);
-  const prod = (Rr) => { let t = 0; for (const sp of TS) { const v = []; for (const x of Rr) if (x.p > 0 && g[x.pt]?.[sp]) v.push(x.v * x.p); v.sort((a, b) => b - a); for (let i = 0; i < 10 && i < v.length; i++) t += v[i]; } return t; };
-  const after = (Rr, out, inn, tid) => { let r = [...Rr.filter((x) => !out.includes(x.n)), ...inn.map((x) => ({ ...x, slot: 0, v: val(x.s, PUN[tid]) }))]; const cut = [];
-    while (r.length > Rr.length) { const c = r.filter((x) => x.slot !== 13 && !inn.some((y) => y.n === x.n)).sort((a, b) => a.v - b.v)[0]; cut.push(c.n); r = r.filter((x) => x !== c); } return { r, cut }; };
+  // A started player is worth (value + 3); an empty slot is worth 0, so below-average players still beat nobody
+  const prod = (Rr) => { let t = 0; for (const sp of TS) { const v = []; for (const x of Rr) if (x.p > 0 && g[x.pt]?.[sp]) v.push(Math.max(0, (x.v + 3) * x.p)); v.sort((a, b) => b - a); for (let i = 0; i < 10 && i < v.length; i++) t += v[i]; } return t; };
+  // Best free agent (21+ min) for each team's build, used to fill a roster spot a 2-for-1 opens up
+  const FAPOOL = fa.map((e) => { const p = e.player; const s = split(p, '00' + SEASON); if (!s || s.gp < 3 || (s.a[40] || 0) < 21 || p.injuryStatus === 'OUT' || e.status !== 'FREEAGENT') return null; return { n: p.fullName, pt: p.proTeamId, inj: p.injuryStatus, slot: 0, s: line(p), p: play[p.injuryStatus] ?? 0.5, raw: p }; }).filter(Boolean);
+  const FILL = {}; for (const t of d.teams) { const best = FAPOOL.map((x) => ({ ...x, v: val(x.s, PUN[t.id]) })).sort((a, b) => b.v - a.v)[0]; FILL[t.id] = best || null; }
+  const after = (Rr, out, inn, tid) => { let r = [...Rr.filter((x) => !out.includes(x.n)), ...inn.map((x) => ({ ...x, slot: 0, v: val(x.s, PUN[tid]) }))]; const cut = [], add = [];
+    while (r.length > Rr.length) { const c = r.filter((x) => x.slot !== 13 && !inn.some((y) => y.n === x.n)).sort((a, b) => a.v - b.v)[0]; cut.push(c.n); r = r.filter((x) => x !== c); }
+    if (r.length < Rr.length && FILL[tid]) { r.push(FILL[tid]); add.push(FILL[tid].n); } return { r, cut, add }; };
   const okT = (x) => x.slot !== 13 && x.inj !== 'OUT' && (x.s[40] || 0) >= 20;
   const sgn1 = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
   const tradeSearch = (A) => {
@@ -127,11 +132,16 @@ window.GEN = async function (opts = {}) {
         const ma = after(mine, gv.map((x) => x.n), gt, A); const ours = prod(ma.r) - base; if (ours < 0.03 * Math.abs(base) + 2) continue;
         const ta = after(th, gt.map((x) => x.n), gv, Bid); const theirs = prod(ta.r) - tb; if (theirs < -0.015 * Math.abs(tb)) continue;
         const score = ours / Math.abs(base) + 0.5 * Math.max(0, theirs / Math.abs(tb)) + 0.1 * Math.min(perceived, 0.3);
-        if (!top || score > top.score) top = { Bid, gv, gt, ours, theirs, perceived, score, cutMe: ma.cut, cutThem: ta.cut, mineAfter: ma.r, theirsAfter: ta.r, base, tb };
+        if (!top || score > top.score) top = { Bid, gv, gt, ours, theirs, perceived, score, cutMe: ma.cut, cutThem: ta.cut, addMe: ma.add, addThem: ta.add, mineAfter: ma.r, theirsAfter: ta.r, base, tb };
       }
       if (top) best.push(top);
     }
-    return best.sort((a, b) => b.score - a.score).slice(0, 3);
+    // Confirm with a simulated week vs the whole league (two random opponents' weeks would be noisy; use next week's games vs every other team)
+    const sNext = WEEKS[WEEK + 1] ? SP(WEEK + 1) : null; if (!sNext) return best.sort((a, b) => b.score - a.score).slice(0, 3);
+    const lg = (Rr, swapId, swapR) => { let s = 0, n = 0; for (const t of d.teams) { if (t.id === A) continue; s += sim(Rr, t.id === swapId ? swapR : R[t.id], sNext, 120).win; n++; } return s / n; };
+    const baseLg = lg(mine);
+    return best.sort((a, b) => b.score - a.score).slice(0, 6).map((t) => ({ ...t, lgBefore: Math.round(baseLg), lgAfter: Math.round(lg(t.mineAfter, t.Bid, t.theirsAfter)) }))
+      .filter((t) => t.lgAfter >= t.lgBefore + 2).sort((a, b) => (b.lgAfter - b.lgBefore) - (a.lgAfter - a.lgBefore)).slice(0, 3);
   };
   const descP = (x) => { const s = x.s; const l7 = L7MIN[x.n]; return `${x.n} (${abbr[x.pt]}, ${f1(s[40])} min${l7 != null && Math.abs(l7 - s[40]) >= 3 ? `, ${f1(l7)} lately` : ''}: ${f1(s[0])} pts, ${f1(s[6])} reb, ${f1(s[3])} ast, ${f1(s[2])} stl, ${f1(s[17])} 3pm, ${pct(s[13], s[14])?.toFixed(3).replace(/^0/, '') ?? '—'} FG, ${pct(s[15], s[16])?.toFixed(3).replace(/^0/, '') ?? '—'} FT${x.inj !== 'ACTIVE' ? ', ' + x.inj.replace(/_/g, ' ').toLowerCase() : ''})`; };
   const catDelta = (out, inn, punts) => { const sum = (L, k) => L.reduce((s, x) => s + (x.s[k] || 0), 0); const parts = [];
@@ -194,9 +204,11 @@ window.GEN = async function (opts = {}) {
         `You give: ${t.gv.map(descP).join(' and ')}.`,
         `You get: ${t.gt.map(descP).join(' and ')}.`,
         `Per game for you: ${catDelta(t.gv, t.gt, punts)}.`,
-        `Production over the next two weeks (best 10 players each day, in this team's build): ${ourPct >= 0 ? '+' : ''}${ourPct}% for you.` + (nextBase != null ? ` Next week vs ${names[oNext]}: ${nextBase}% → ${nextAfter}%.` : ''),
+        (t.lgBefore != null ? `Simulated next week against every other team: you'd win ${t.lgBefore}% → ${t.lgAfter}% of matchups.` : '') + (nextBase != null ? ` Vs your actual next opponent, ${names[oNext]}: ${nextBase}% → ${nextAfter}%.` : ''),
+        `Production over the next two weeks (best 10 players each day, in this team's build): ${ourPct >= 0 ? '+' : ''}${ourPct}% for you.`,
         `Why ${other} might say yes: ` + (theirPct >= 0 ? `it helps them too (${theirPct >= 0 ? '+' : ''}${theirPct}% production in their build${PUN[t.Bid].length ? ', which punts ' + PUN[t.Bid].join(' and ') : ''})` : `their production barely changes (${theirPct}%)`) + `, and by draft position and current rank they get the bigger names (about +${Math.round(100 * t.perceived)}% in value). They'd get ${catDelta(t.gt, t.gv, PUN[t.Bid])}.`,
         ...(t.cutMe.length ? [`Roster: you'd drop ${t.cutMe.join(', ')} to make room.`] : []),
+        ...(t.addMe?.length ? [`Roster: the open spot goes to the best free agent, ${t.addMe.join(', ')} (counted in the numbers above).`] : []),
         ...(t.cutThem.length ? [`They'd need to drop ${t.cutThem.join(', ')}.`] : []),
         ...(watch.length ? [`Watch: ${watch.join('; ')}.`] : []),
       ];
