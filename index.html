@@ -145,8 +145,8 @@
   body.is-home .sh-teamhead .sh-back { display: none; }
   .sh-head-logos img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(245, 241, 232, 0.25); }
   /* Home: team tabs are a preview (hover explains, click nudges the picker); they slide in for real once a team is chosen */
-  body.is-home .sh-tabs button:not(.sh-tab-home) { background: transparent; border-style: dashed; color: var(--muted); cursor: help; }
-  body.is-home .sh-tabs button:not(.sh-tab-home):hover, body.is-home .sh-tabs button:not(.sh-tab-home):focus-visible, body.is-home .sh-tabs button.sh-peek { color: var(--fg); border-color: var(--ball); border-style: solid; }
+  body.is-home .sh-tabs button[data-desc] { background: transparent; border-style: dashed; color: var(--muted); cursor: help; }
+  body.is-home .sh-tabs button[data-desc]:hover, body.is-home .sh-tabs button[data-desc]:focus-visible, body.is-home .sh-tabs button.sh-peek { color: var(--fg); border-color: var(--ball); border-style: solid; }
   .sh-tabdesc { display: none; margin: -20px 0 0; padding: 0 4px; color: var(--muted); font-size: 0.85rem; min-height: 1.3em; }
   body.is-home .sh-tabdesc { display: block; }
   .sh-tabdesc b { color: var(--fg); }
@@ -156,12 +156,12 @@
   .sh-pick select.sh-nudge { animation: sh-nudge 0.45s ease-in-out; box-shadow: 0 0 0 3px var(--ball), 0 0 18px rgba(232, 131, 58, 0.6); }
   @media (prefers-reduced-motion: reduce) { .sh-pick select.sh-nudge { animation: none; } }
   @keyframes sh-tab-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-  body:not(.is-home) .sh-tabs button:not(.sh-tab-home) { animation: sh-tab-in 0.35s ease-out both; }
-  body:not(.is-home) .sh-tabs button:nth-child(3) { animation-delay: 0.04s; }
-  body:not(.is-home) .sh-tabs button:nth-child(4) { animation-delay: 0.08s; }
-  body:not(.is-home) .sh-tabs button:nth-child(5) { animation-delay: 0.12s; }
-  body:not(.is-home) .sh-tabs button:nth-child(6) { animation-delay: 0.16s; }
-  @media (prefers-reduced-motion: reduce) { body:not(.is-home) .sh-tabs button:not(.sh-tab-home) { animation: none; } }
+  body:not(.is-home) .sh-tabs button[data-desc] { animation: sh-tab-in 0.35s ease-out both; }
+  body:not(.is-home) .sh-tabs button[data-desc]:nth-child(3) { animation-delay: 0.04s; }
+  body:not(.is-home) .sh-tabs button[data-desc]:nth-child(4) { animation-delay: 0.08s; }
+  body:not(.is-home) .sh-tabs button[data-desc]:nth-child(5) { animation-delay: 0.12s; }
+  body:not(.is-home) .sh-tabs button[data-desc]:nth-child(6) { animation-delay: 0.16s; }
+  @media (prefers-reduced-motion: reduce) { body:not(.is-home) .sh-tabs button[data-desc] { animation: none; } }
   .sh-logo .sh-ball { width: 100%; height: 100%; display: block; }
   .sh-footnote { margin-top: 8px; }
   .sh-intro strong { font-family: var(--display); font-weight: 600; font-size: 1.15em; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ball); }
@@ -179,6 +179,33 @@
   .sh-qcard figcaption { margin-top: 6px; color: var(--muted); font-size: 0.85rem; }
   .sh-credit { margin: 4px 0 0; color: var(--muted); font-size: 0.7rem; }
   @media (max-width: 30rem) { .sh-qphoto { width: 64px; height: 64px; } }
+  /* Tong Sampah */
+  .sh-tabs button.sh-tab-sampah { border-color: #7a8a3a; }
+  .sh-tabs button.sh-tab-sampah[aria-selected="true"] { background: #5d6b26; border-color: #5d6b26; color: #fff; }
+  .sh-sampah-head { position: relative; overflow: hidden; border-radius: 18px; padding: 22px 22px 20px; color: #f2f0e4;
+    background: radial-gradient(120% 140% at 100% 0%, #4b5520 0%, #2a2f14 55%, #181a0c 100%); box-shadow: 0 10px 28px rgba(20, 24, 8, 0.35); }
+  .sh-sampah-head::after { content: "🗑️"; position: absolute; right: -10px; bottom: -28px; font-size: 140px; opacity: 0.12; transform: rotate(-12deg); }
+  .sh-sampah-kicker { margin: 0; color: #c9d36b; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+  .sh-sampah-title { margin: 6px 0 0; font-family: var(--display); font-weight: 600; font-size: clamp(2.2rem, 7vw, 3.2rem); line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; border: 0; padding: 0; }
+  .sh-sampah-title::before { display: none; }
+  .sh-sampah-sub { margin: 10px 0 0; max-width: 40rem; color: #dcdcc8; }
+  .sh-sampah-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .sh-trash-card { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: start; background: var(--card); border: 1px solid var(--line); border-left: 5px solid #7a8a3a; border-radius: 16px; padding: 14px 16px; }
+  .sh-trash-card:nth-child(-n+3) { border-left-color: #b3261e; }
+  .sh-trash-rank { font-family: var(--display); font-weight: 600; font-size: 2rem; line-height: 1; min-width: 2.2rem; color: #7a8a3a; }
+  .sh-trash-card:nth-child(-n+3) .sh-trash-rank { color: #b3261e; }
+  .sh-trash-face { width: 64px; height: 47px; object-fit: cover; object-position: top; border-radius: 10px; background: var(--panel); filter: grayscale(0.55) sepia(0.25); }
+  .sh-trash-body { min-width: 0; }
+  .sh-trash-top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .sh-trash-kind { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+  .tk-draft { color: #b3261e; } .tk-inj { color: #a86a00; } .tk-waiver { color: #5d6b26; } .tk-trade { color: #6a3fb0; } .tk-self { color: var(--ball); }
+  @media (prefers-color-scheme: dark) { .tk-draft { color: #f07067; } .tk-inj { color: #e0a640; } .tk-waiver { color: #b7c45a; } .tk-trade { color: #b897f0; } }
+  .sh-trash-pick { font-size: 0.78rem; color: var(--muted); }
+  .sh-trash-name { margin: 4px 0 0; font-size: 1.1rem; font-weight: 700; }
+  .sh-trash-team { margin: 0; font-size: 0.85rem; color: var(--muted); }
+  .sh-trash-stat { margin: 6px 0 0; font-size: 0.82rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sh-trash-roast { margin: 6px 0 0; line-height: 1.45; }
+  @media (max-width: 30rem) { .sh-trash-card { grid-template-columns: auto 1fr; } .sh-trash-face { grid-row: 1; grid-column: 2; justify-self: end; width: 72px; height: 52px; } .sh-trash-body { grid-column: 1 / -1; } }
   .sh-quote-line { font-family: var(--serif); font-size: 0.95rem; margin: 0; }
   .sh-foot { font-size: 0.8rem; color: var(--muted); }
   .sh-foot summary { cursor: pointer; }
@@ -272,6 +299,7 @@
 
   <nav class="sh-tabs" aria-label="Pages">
     <button type="button" data-page="home" aria-selected="false" class="sh-tab-home">⌂ Home</button>
+    <button type="button" data-page="sampah" aria-selected="false" class="sh-tab-sampah">🗑️ Tong Sampah</button>
     <button type="button" data-page="overview" aria-selected="true" data-desc="win odds for this week and next, a to-do list, standings and news">Overview</button>
     <button type="button" data-page="matchup" aria-selected="false" data-desc="the category-by-category score and who to start each day">Matchup</button>
     <button type="button" data-page="roster" aria-selected="false" data-desc="every player with photos, stats, injuries and games per week">Roster</button>
@@ -293,6 +321,16 @@
         <div><h3 class="sh-h3">Around the NBA</h3><div class="sh-moves" id="home-news-nba"></div></div>
         <div><h3 class="sh-h3">Fantasy basketball</h3><div class="sh-moves" id="home-news-fantasy"></div></div>
       </div></div>
+  </section>
+
+  <section class="sh-page" id="p-sampah" hidden>
+    <div class="sh-sampah-head">
+      <p class="sh-sampah-kicker">League-wide hall of shame · updated with each refresh</p>
+      <h2 class="sh-sampah-title">🗑️ Tong Sampah</h2>
+      <p class="sh-sampah-sub">The 20 smelliest draft picks, waiver adds and trades of the season so far, ranked from "throw it out" to "throw it out faster". Built from real ESPN numbers: games played, minutes, and per-game value across all 9 categories, ranked against all 168 drafted players. Feelings were not considered.</p>
+    </div>
+    <ol class="sh-sampah-list" id="sampah-list"></ol>
+    <p class="sh-note">All in good fun. If your team is on here, the group chat is the place to cope.</p>
   </section>
 
   <section class="sh-page" id="p-overview" hidden>
@@ -446,6 +484,19 @@
   // Front page: league facts and every team's logo
   const INFO = (L.info || [])[0];
   const LOGOS = Object.fromEntries(((INFO && INFO.teams) || []).map((t) => [t.slug, t.logo]));
+
+  // Tong Sampah: league-wide hall of shame, one card per entry
+  const KIND_CLASS = { 'Draft bust': 'tk-draft', 'Injury ward': 'tk-inj', 'Waiver trash': 'tk-waiver', 'Trade': 'tk-trade', 'Self-own': 'tk-self' };
+  fill('sampah-list', sortRows(L.trash).map((x) => {
+    const li = el('li', undefined, 'sh-trash-card');
+    const rank = el('div', String(x.order), 'sh-trash-rank');
+    const face = document.createElement('img'); face.className = 'sh-trash-face'; face.alt = ''; face.loading = 'lazy';
+    if (x.pid) face.src = 'https://a.espncdn.com/i/headshots/nba/players/full/' + x.pid + '.png'; face.onerror = () => face.removeAttribute('src');
+    const body = el('div', undefined, 'sh-trash-body');
+    const top = el('div', undefined, 'sh-trash-top'); top.append(el('span', x.kind, 'sh-trash-kind ' + (KIND_CLASS[x.kind] || '')), el('span', x.pick, 'sh-trash-pick'));
+    body.append(top, el('h3', x.player, 'sh-trash-name'), el('p', x.team, 'sh-trash-team'), el('p', x.stat, 'sh-trash-stat'), el('p', x.roast, 'sh-trash-roast'));
+    li.append(rank, face, body); return li;
+  }), 'The bin is empty. Suspicious.');
   if (INFO) {
     fill('hero-logos', (INFO.teams || []).filter((t) => t.logo).map((t) => { const im = document.createElement('img'); im.src = t.logo; im.alt = ''; im.title = t.team; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); return im; }));
     const facts = [
@@ -553,13 +604,16 @@
   };
 
   // Page (hash) and team (?team=) live in the URL, so any view can be linked; old page names still work
-  const PAGES = ['home', 'overview', 'matchup', 'roster', 'waivers', 'trades'];
+  const PAGES = ['home', 'sampah', 'overview', 'matchup', 'roster', 'waivers', 'trades'];
   const OLD = { today: 'overview', news: 'overview', league: 'overview', week: 'matchup', ahead: 'matchup' };
   const pageFrom = (h) => PAGES.includes(h) ? h : OLD[h] || 'home';
   let page = pageFrom(location.hash.slice(1));
   let team = new URLSearchParams(location.search).get('team');
+  // "League mode" = no team chosen (Home, or Tong Sampah opened from Home). Tong Sampah keeps whatever mode you were in.
+  if (!TEAMS[team] || page === 'home') document.body.classList.add('is-home');
   if (!TEAMS[team]) team = TEAMS[DEFAULT] ? DEFAULT : order[0];
-  const writeUrl = () => history.replaceState(null, '', page === 'home' ? location.pathname : '?team=' + encodeURIComponent(team) + '#' + page);
+  const isLeague = () => document.body.classList.contains('is-home');
+  const writeUrl = () => history.replaceState(null, '', isLeague() ? location.pathname + (page === 'sampah' ? '#sampah' : '') : '?team=' + encodeURIComponent(team) + '#' + page);
   const LEAGUE = 'All Things Athletic (ATA) Season 6';
   // Home: the same header as a team page, but for the whole league, and no team selected
   const BALL = '<svg class="sh-ball" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e8833a"/><g fill="none" stroke="#462211" stroke-width="1.1"><circle cx="12" cy="12" r="11"/><path d="M1 12h22M12 1v22M4.2 4.2c3.2 3 3.2 12.6 0 15.6M19.8 4.2c-3.2 3-3.2 12.6 0 15.6"/></g></svg>';
@@ -570,10 +624,11 @@
   };
   const show = (id) => {
     page = pageFrom(id);
-    const wasHome = document.body.classList.contains('is-home');
-    document.body.classList.toggle('is-home', page === 'home');
-    if (page === 'home') leagueHeader(); else if (wasHome) render(team);
-    document.title = page === 'home' ? LEAGUE : TEAMS[team].team + ' · ' + LEAGUE;
+    const wasHome = isLeague();
+    const nowHome = page === 'home' || (page === 'sampah' && wasHome);
+    document.body.classList.toggle('is-home', nowHome);
+    if (nowHome) leagueHeader(); else if (wasHome) render(team);
+    document.title = (page === 'sampah' ? 'Tong Sampah · ' : nowHome ? '' : TEAMS[team].team + ' · ') + LEAGUE;
     for (const s of document.querySelectorAll('section.sh-page')) s.hidden = s.id !== 'p-' + page;
     for (const b of document.querySelectorAll('.sh-tabs button')) { const on = b.dataset.page === page; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   };
@@ -586,9 +641,9 @@
   const describe = (b) => { if (!b || !b.dataset.desc) { tabDesc.textContent = DEFAULT_DESC; return; } tabDesc.replaceChildren(el('b', NAMES[b.dataset.page] + ': '), document.createTextNode(b.dataset.desc.charAt(0).toUpperCase() + b.dataset.desc.slice(1) + '.')); };
   describe(null);
   for (const b of document.querySelectorAll('.sh-tabs button[data-desc]')) {
-    b.addEventListener('mouseenter', () => { if (page === 'home') describe(b); });
-    b.addEventListener('focus', () => { if (page === 'home') describe(b); });
-    b.addEventListener('mouseleave', () => { if (page === 'home') describe(wanted ? document.querySelector('.sh-tabs button[data-page="' + wanted + '"]') : null); });
+    b.addEventListener('mouseenter', () => { if (isLeague()) describe(b); });
+    b.addEventListener('focus', () => { if (isLeague()) describe(b); });
+    b.addEventListener('mouseleave', () => { if (isLeague()) describe(wanted ? document.querySelector('.sh-tabs button[data-page="' + wanted + '"]') : null); });
   }
   const nudge = (b) => {
     wanted = b.dataset.page; describe(b);
@@ -599,12 +654,12 @@
   };
   sel.addEventListener('animationend', () => sel.classList.remove('sh-nudge'));
   for (const b of document.querySelectorAll('.sh-tabs button')) b.addEventListener('click', () => {
-    if (page === 'home' && b.dataset.page !== 'home') { nudge(b); return; }
+    if (isLeague() && b.dataset.desc) { nudge(b); return; }
     show(b.dataset.page); writeUrl();
     if (nav && nav.getBoundingClientRect().top <= 1) window.scrollTo({ top: nav.offsetTop - 8 });
   });
   const clearWanted = () => { wanted = null; hint.textContent = ''; for (const x of document.querySelectorAll('.sh-tabs button')) x.classList.remove('sh-peek'); describe(null); };
-  sel.addEventListener('change', () => { if (!sel.value) return; const fromHome = page === 'home'; const go = fromHome ? (wanted || 'overview') : page; clearWanted(); team = sel.value; render(team); show(go); writeUrl(); if (fromHome) window.scrollTo({ top: 0 }); });
+  sel.addEventListener('change', () => { if (!sel.value) return; const fromHome = isLeague(); const go = fromHome ? (wanted || 'overview') : page; clearWanted(); team = sel.value; render(team); show(go); writeUrl(); if (fromHome) window.scrollTo({ top: 0 }); });
   window.addEventListener('hashchange', () => { show(location.hash.slice(1)); });
   render(team);
   show(page);
