@@ -291,6 +291,17 @@ window.GEN = async function (opts = {}) {
 
   const files = { 'league/ranks': ranks, 'league/teamstats': teamstats, 'league/standings': standings, 'league/txns': txns, 'league/perminute': perminute };
   if (opts.quote) files['league/quote'] = [opts.quote];
+  // Home-page news (NBA and fantasy), passed straight through
+  if (opts.homeNews) files['league/homenews'] = [...(opts.homeNews.nba || []).map((n, i) => ({ ...n, group: 'nba', order: i + 1 })), ...(opts.homeNews.fantasy || []).map((n, i) => ({ ...n, group: 'fantasy', order: 100 + i + 1 }))];
+  // Team logos: custom uploads on ESPN need a signed-in viewer, so embed a small copy; public files keep their URL
+  const logoOf = async (u) => {
+    if (!u || /\.svg(\?|$)/i.test(u)) return u || '';
+    try { const r = await fetch(u, { credentials: u.includes('fantasy.espn.com') ? 'include' : 'omit' }); if (!r.ok) return u;
+      const bm = await createImageBitmap(await r.blob()); const S = 96, c = new OffscreenCanvas(S, S), x = c.getContext('2d'); const k = Math.max(S / bm.width, S / bm.height);
+      x.drawImage(bm, (S - bm.width * k) / 2, (S - bm.height * k) / 2, bm.width * k, bm.height * k);
+      const b = await c.convertToBlob({ type: 'image/png' }); return await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); });
+    } catch (e) { return u; } };
+  const LOGO = {}; for (const t of d.teams) LOGO[t.id] = await logoOf(t.logo);
   // League info for the front page
   const st = (await F(B + '?view=mSettings')).settings;
   const SLOTN = { 0: 'PG', 1: 'SG', 2: 'SF', 3: 'PF', 4: 'C', 5: 'G', 6: 'F', 11: 'UTIL', 12: 'Bench', 13: 'IR' };
@@ -300,7 +311,7 @@ window.GEN = async function (opts = {}) {
     cats: CAT.filter((c) => (st.scoringSettings?.scoringItems || []).some((i) => STATN[i.statId] === c)), weeks: st.scheduleSettings?.matchupPeriodCount, playoff_teams: st.scheduleSettings?.playoffTeamCount,
     draft: st.draftSettings?.type === 'SNAKE' ? 'Snake draft' : st.draftSettings?.type, draft_date: st.draftSettings?.date ? new Date(st.draftSettings.date + 8 * 3600e3).toISOString().slice(0, 10) : null,
     slots: slots.join(', '), lock: st.rosterSettings?.lineupLocktimeType === 'INDIVIDUAL_GAME' ? 'Each player locks at his own game’s tip-off' : 'Daily', adds: opts.addsPerWeek || 4,
-    current_week: WEEK, teams: standings.map((s) => { const t = d.teams.find((x) => names[x.id] === s.team); return { team: s.team, slug: slug(s.team), logo: t?.logo || '', record: s.record, rank: s.order }; }) }];
+    current_week: WEEK, teams: standings.map((s) => { const t = d.teams.find((x) => names[x.id] === s.team); return { team: s.team, slug: slug(s.team), logo: (t && LOGO[t.id]) || '', record: s.record, rank: s.order }; }) }];
   for (const t of d.teams) files['teams/' + slug(names[t.id])] = team(t.id);
   window.SITEFILES = files;
   return { teams: d.teams.length, punts: Object.fromEntries(d.teams.map((t) => [names[t.id], PUN[t.id].join('+') || 'none'])), bytes: JSON.stringify(files).length };
