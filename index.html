@@ -161,6 +161,7 @@
   body:not(.is-home) .sh-tabs button[data-desc]:nth-child(4) { animation-delay: 0.08s; }
   body:not(.is-home) .sh-tabs button[data-desc]:nth-child(5) { animation-delay: 0.12s; }
   body:not(.is-home) .sh-tabs button[data-desc]:nth-child(6) { animation-delay: 0.16s; }
+  body:not(.is-home) .sh-tabs button[data-desc]:nth-child(2) { animation-delay: 0s; }
   @media (prefers-reduced-motion: reduce) { body:not(.is-home) .sh-tabs button[data-desc] { animation: none; } }
   .sh-logo .sh-ball { width: 100%; height: 100%; display: block; }
   .sh-footnote { margin-top: 8px; }
@@ -299,12 +300,12 @@
 
   <nav class="sh-tabs" aria-label="Pages">
     <button type="button" data-page="home" aria-selected="false" class="sh-tab-home">⌂ Home</button>
-    <button type="button" data-page="sampah" aria-selected="false" class="sh-tab-sampah">🗑️ Tong Sampah</button>
     <button type="button" data-page="overview" aria-selected="true" data-desc="win odds for this week and next, a to-do list, standings and news">Overview</button>
     <button type="button" data-page="matchup" aria-selected="false" data-desc="the category-by-category score and who to start each day">Matchup</button>
     <button type="button" data-page="roster" aria-selected="false" data-desc="every player with photos, stats, injuries and games per week">Roster</button>
     <button type="button" data-page="waivers" aria-selected="false" data-desc="the best free agents and which moves to make, with lock times">Waivers</button>
     <button type="button" data-page="trades" aria-selected="false" data-desc="trade ideas with other teams, each with a full breakdown">Trades</button>
+    <button type="button" data-page="sampah" aria-selected="false" class="sh-tab-sampah">🗑️ Tong Sampah</button>
   </nav>
   <p class="sh-tabdesc" id="tab-desc"></p>
 
