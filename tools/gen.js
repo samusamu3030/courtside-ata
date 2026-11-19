@@ -203,10 +203,10 @@ window.GEN = async function (opts = {}) {
       const lines = [
         `You give: ${t.gv.map(descP).join(' and ')}.`,
         `You get: ${t.gt.map(descP).join(' and ')}.`,
-        `Per game for you: ${catDelta(t.gv, t.gt, punts)}.`,
+        `Per game for you${t.addMe?.length ? ' (including the free-agent pickup)' : ''}: ${catDelta(t.gv, [...t.gt, ...(t.addMe?.length ? [FILL[id]] : [])], punts)}. Only your best 10 play each day, so bench players who rarely start count for little.`,
         (t.lgBefore != null ? `Simulated next week against every other team: you'd win ${t.lgBefore}% → ${t.lgAfter}% of matchups.` : '') + (nextBase != null ? ` Vs your actual next opponent, ${names[oNext]}: ${nextBase}% → ${nextAfter}%.` : ''),
         `Production over the next two weeks (best 10 players each day, in this team's build): ${ourPct >= 0 ? '+' : ''}${ourPct}% for you.`,
-        `Why ${other} might say yes: ` + (theirPct >= 0 ? `it helps them too (${theirPct >= 0 ? '+' : ''}${theirPct}% production in their build${PUN[t.Bid].length ? ', which punts ' + PUN[t.Bid].join(' and ') : ''})` : `their production barely changes (${theirPct}%)`) + `, and by draft position and current rank they get the bigger names (about +${Math.round(100 * t.perceived)}% in value). They'd get ${catDelta(t.gt, t.gv, PUN[t.Bid])}.`,
+        `Why ${other} might say yes: ` + (theirPct >= 0 ? `it helps them too (${theirPct >= 0 ? '+' : ''}${theirPct}% production in their build${PUN[t.Bid].length ? ', which punts ' + PUN[t.Bid].join(' and ') : ''})` : `their production barely changes (${theirPct}%)`) + `, and by draft position and current rank they get the bigger names (about +${Math.round(100 * t.perceived)}% in value). Per game they'd get ${catDelta([...t.gt, ...(t.cutThem.length ? [] : [])], [...t.gv, ...(t.addThem?.length ? [FILL[t.Bid]] : [])], PUN[t.Bid])}.`,
         ...(t.cutMe.length ? [`Roster: you'd drop ${t.cutMe.join(', ')} to make room.`] : []),
         ...(t.addMe?.length ? [`Roster: the open spot goes to the best free agent, ${t.addMe.join(', ')} (counted in the numbers above).`] : []),
         ...(t.cutThem.length ? [`They'd need to drop ${t.cutThem.join(', ')}.`] : []),
