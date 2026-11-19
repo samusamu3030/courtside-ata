@@ -144,8 +144,17 @@
   body.is-home .sh-head-logos { display: flex; }
   body.is-home .sh-teamhead .sh-back { display: none; }
   .sh-head-logos img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(245, 241, 232, 0.25); }
-  /* Home shows only the Home tab; the team tabs slide in once a team is chosen */
-  body.is-home .sh-tabs button:not(.sh-tab-home) { display: none; }
+  /* Home: team tabs are a preview (hover explains, click nudges the picker); they slide in for real once a team is chosen */
+  body.is-home .sh-tabs button:not(.sh-tab-home) { background: transparent; border-style: dashed; color: var(--muted); cursor: help; }
+  body.is-home .sh-tabs button:not(.sh-tab-home):hover, body.is-home .sh-tabs button:not(.sh-tab-home):focus-visible, body.is-home .sh-tabs button.sh-peek { color: var(--fg); border-color: var(--ball); border-style: solid; }
+  .sh-tabdesc { display: none; margin: -20px 0 0; padding: 0 4px; color: var(--muted); font-size: 0.85rem; min-height: 1.3em; }
+  body.is-home .sh-tabdesc { display: block; }
+  .sh-tabdesc b { color: var(--fg); }
+  .sh-pick-hint { margin: 8px 0 0; font-size: 0.85rem; color: #ffd2ae; min-height: 0; }
+  .sh-pick-hint:empty { display: none; }
+  @keyframes sh-nudge { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+  .sh-pick select.sh-nudge { animation: sh-nudge 0.45s ease-in-out; box-shadow: 0 0 0 3px var(--ball), 0 0 18px rgba(232, 131, 58, 0.6); }
+  @media (prefers-reduced-motion: reduce) { .sh-pick select.sh-nudge { animation: none; } }
   @keyframes sh-tab-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
   body:not(.is-home) .sh-tabs button:not(.sh-tab-home) { animation: sh-tab-in 0.35s ease-out both; }
   body:not(.is-home) .sh-tabs button:nth-child(3) { animation-delay: 0.04s; }
@@ -258,16 +267,18 @@
       <label for="team">Team</label>
       <select id="team"></select>
     </div>
+    <p class="sh-pick-hint" id="pick-hint" role="status" aria-live="polite"></p>
   </header>
 
   <nav class="sh-tabs" aria-label="Pages">
     <button type="button" data-page="home" aria-selected="false" class="sh-tab-home">⌂ Home</button>
-    <button type="button" data-page="overview" aria-selected="true">Overview</button>
-    <button type="button" data-page="matchup" aria-selected="false">Matchup</button>
-    <button type="button" data-page="roster" aria-selected="false">Roster</button>
-    <button type="button" data-page="waivers" aria-selected="false">Waivers</button>
-    <button type="button" data-page="trades" aria-selected="false">Trades</button>
+    <button type="button" data-page="overview" aria-selected="true" data-desc="win odds for this week and next, a to-do list, standings and news">Overview</button>
+    <button type="button" data-page="matchup" aria-selected="false" data-desc="the category-by-category score and who to start each day">Matchup</button>
+    <button type="button" data-page="roster" aria-selected="false" data-desc="every player with photos, stats, injuries and games per week">Roster</button>
+    <button type="button" data-page="waivers" aria-selected="false" data-desc="the best free agents and which moves to make, with lock times">Waivers</button>
+    <button type="button" data-page="trades" aria-selected="false" data-desc="trade ideas with other teams, each with a full breakdown">Trades</button>
   </nav>
+  <p class="sh-tabdesc" id="tab-desc"></p>
 
   <section class="sh-page" id="p-home">
     <div class="sh-card"><h2>Welcome to the war room</h2>
@@ -453,7 +464,7 @@
       if (t.logo) { const im = document.createElement('img'); im.src = t.logo; im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onload = () => lg.replaceChildren(im); }
       const tx = el('span'); tx.append(el('span', t.team, 'sh-teamname'), el('span', '#' + t.rank + ' · ' + t.record, 'sh-lock'));
       b.append(lg, tx);
-      b.addEventListener('click', () => { if (!TEAMS[t.slug]) return; team = t.slug; render(team); show('overview'); writeUrl(); window.scrollTo({ top: 0 }); });
+      b.addEventListener('click', () => { if (!TEAMS[t.slug]) return; const go = wanted || 'overview'; clearWanted(); team = t.slug; render(team); show(go); writeUrl(); window.scrollTo({ top: 0 }); });
       return b;
     }));
   }
@@ -567,11 +578,33 @@
     for (const b of document.querySelectorAll('.sh-tabs button')) { const on = b.dataset.page === page; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   };
   const nav = document.querySelector('.sh-tabs');
+  // Home: tab previews. Hover/focus explains the page; a click nudges the picker and remembers which tab to open
+  let wanted = null;
+  const NAMES = { overview: 'Overview', matchup: 'Matchup', roster: 'Roster', waivers: 'Waivers', trades: 'Trades' };
+  const tabDesc = $('tab-desc'), hint = $('pick-hint');
+  const DEFAULT_DESC = 'Inside every team page: hover a tab to see what’s in it, then choose a team above.';
+  const describe = (b) => { if (!b || !b.dataset.desc) { tabDesc.textContent = DEFAULT_DESC; return; } tabDesc.replaceChildren(el('b', NAMES[b.dataset.page] + ': '), document.createTextNode(b.dataset.desc.charAt(0).toUpperCase() + b.dataset.desc.slice(1) + '.')); };
+  describe(null);
+  for (const b of document.querySelectorAll('.sh-tabs button[data-desc]')) {
+    b.addEventListener('mouseenter', () => { if (page === 'home') describe(b); });
+    b.addEventListener('focus', () => { if (page === 'home') describe(b); });
+    b.addEventListener('mouseleave', () => { if (page === 'home') describe(wanted ? document.querySelector('.sh-tabs button[data-page="' + wanted + '"]') : null); });
+  }
+  const nudge = (b) => {
+    wanted = b.dataset.page; describe(b);
+    for (const x of document.querySelectorAll('.sh-tabs button')) x.classList.toggle('sh-peek', x === b);
+    hint.textContent = '↑ Choose a team to open its ' + NAMES[wanted] + '.';
+    sel.classList.remove('sh-nudge'); void sel.offsetWidth; sel.classList.add('sh-nudge');
+    sel.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => sel.focus({ preventScroll: true }), 350);
+  };
+  sel.addEventListener('animationend', () => sel.classList.remove('sh-nudge'));
   for (const b of document.querySelectorAll('.sh-tabs button')) b.addEventListener('click', () => {
+    if (page === 'home' && b.dataset.page !== 'home') { nudge(b); return; }
     show(b.dataset.page); writeUrl();
     if (nav && nav.getBoundingClientRect().top <= 1) window.scrollTo({ top: nav.offsetTop - 8 });
   });
-  sel.addEventListener('change', () => { if (!sel.value) return; const fromHome = page === 'home'; team = sel.value; render(team); show(fromHome ? 'overview' : page); writeUrl(); if (fromHome) window.scrollTo({ top: 0 }); });
+  const clearWanted = () => { wanted = null; hint.textContent = ''; for (const x of document.querySelectorAll('.sh-tabs button')) x.classList.remove('sh-peek'); describe(null); };
+  sel.addEventListener('change', () => { if (!sel.value) return; const fromHome = page === 'home'; const go = fromHome ? (wanted || 'overview') : page; clearWanted(); team = sel.value; render(team); show(go); writeUrl(); if (fromHome) window.scrollTo({ top: 0 }); });
   window.addEventListener('hashchange', () => { show(location.hash.slice(1)); });
   render(team);
   show(page);
