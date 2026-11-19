@@ -119,12 +119,13 @@ window.GEN = async function (opts = {}) {
   const after = (Rr, out, inn, tid) => { let r = [...Rr.filter((x) => !out.includes(x.n)), ...inn.map((x) => ({ ...x, slot: 0, v: val(x.s, PUN[tid]) }))]; const cut = [], add = [];
     while (r.length > Rr.length) { const c = r.filter((x) => x.slot !== 13 && !inn.some((y) => y.n === x.n)).sort((a, b) => a.v - b.v)[0]; cut.push(c.n); r = r.filter((x) => x !== c); }
     if (r.length < Rr.length && FILL[tid]) { r.push(FILL[tid]); add.push(FILL[tid].n); } return { r, cut, add }; };
+  const AVOID = new Set(opts.avoid || []);        // injury-prone players never suggested as targets
   const NOTRADE = new Set(opts.noTrade || []);   // e.g. streamers a manager doesn't want in trade ideas
   const okT = (x) => x.slot !== 13 && x.inj !== 'OUT' && (x.s[40] || 0) >= 20 && !NOTRADE.has(x.n);
   const sgn1 = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
   const tradeSearch = (A) => {
     const mine = R[A], base = prod(mine), give = mine.filter(okT), best = [];
-    for (const t of d.teams) { const Bid = t.id; if (Bid === A) continue; const th = R[Bid], tb = prod(th), get = th.filter(okT); let top = null;
+    for (const t of d.teams) { const Bid = t.id; if (Bid === A) continue; const th = R[Bid], tb = prod(th), get = th.filter((x) => okT(x) && !AVOID.has(x.n)); let top = null;
       const shapes = []; for (const a of give) for (const b of get) shapes.push([[a], [b]]);
       for (let i = 0; i < give.length; i++) for (let j = i + 1; j < give.length; j++) for (const b of get) shapes.push([[give[i], give[j]], [b]]);
       for (const a of give) for (let i = 0; i < get.length; i++) for (let j = i + 1; j < get.length; j++) shapes.push([[a], [get[i], get[j]]]);
