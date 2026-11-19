@@ -109,6 +109,21 @@
   .sh-face-blank { visibility: visible; }
   #lineup td { vertical-align: top; }
   #lineup td.sh-wrap { min-width: 0; }
+  .sh-intro { margin: 0 0 10px; max-width: 42rem; }
+  .sh-footnote { margin-top: 8px; }
+  .sh-teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 8px; }
+  .sh-teamcard { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer; }
+  .sh-teamcard:hover { border-color: var(--muted); }
+  .sh-teamcard:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .sh-teamcard > span:last-child { display: grid; }
+  .sh-teamname { font-weight: 600; }
+  .sh-logo-sm { width: 44px; height: 44px; font-size: 0.95rem; }
+  .sh-qcard { margin: 0; display: flex; gap: 16px; align-items: center; padding: 16px 18px; background: var(--panel); border-radius: 12px; }
+  .sh-qphoto { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; object-position: top; flex: none; }
+  .sh-qcard blockquote { margin: 4px 0 0; font-family: var(--serif); font-size: 1.15rem; line-height: 1.35; }
+  .sh-qcard figcaption { margin-top: 6px; color: var(--muted); font-size: 0.85rem; }
+  .sh-credit { margin: 4px 0 0; color: var(--muted); font-size: 0.7rem; }
+  @media (max-width: 30rem) { .sh-qphoto { width: 64px; height: 64px; } }
   .sh-quote-line { font-family: var(--serif); font-size: 0.95rem; margin: 0; }
   .sh-foot { font-size: 0.8rem; color: var(--muted); }
   .sh-foot summary { cursor: pointer; }
@@ -133,18 +148,29 @@
   </header>
 
   <nav class="sh-tabs" aria-label="Pages">
-    <button type="button" data-page="overview" aria-selected="true">Overview</button>
+    <button type="button" data-page="home" aria-selected="true">Home</button>
+    <button type="button" data-page="overview" aria-selected="false">Overview</button>
     <button type="button" data-page="matchup" aria-selected="false">Matchup</button>
     <button type="button" data-page="roster" aria-selected="false">Roster</button>
     <button type="button" data-page="waivers" aria-selected="false">Waivers</button>
     <button type="button" data-page="trades" aria-selected="false">Trades</button>
   </nav>
 
-  <section class="sh-page" id="p-overview">
+  <section class="sh-page" id="p-home">
+    <div class="sh-card"><h2>What this site is</h2>
+      <p class="sh-intro">A game-day helper for every team in our fantasy basketball league. Pick a team (tap a logo below or use the menu at the top) to see its odds for this week and next, a day-by-day lineup, injuries, the best free agents and trade ideas with other teams.</p>
+      <p class="sh-intro">Everything is worked out from ESPN league data and simulated weeks, with news from Locked On Fantasy Basketball. Claude prepares it, and it's refreshed every few days. It's a guide, not a rulebook: each manager makes their own calls.</p></div>
+    <div class="sh-card"><h2 id="league-name">The league</h2><dl class="sh-today" id="league-info"></dl></div>
+    <div class="sh-card"><h2>The teams</h2><p class="sh-note">In standings order. Tap a team to open its page.</p><div class="sh-teams" id="team-grid"></div></div>
+    <figure class="sh-qcard" id="quote-card"></figure>
+  </section>
+
+  <section class="sh-page" id="p-overview" hidden>
     <div class="sh-hero" id="hero"></div>
     <div class="sh-card"><h2>To do</h2><dl class="sh-today" id="today-list"></dl></div>
     <div class="sh-card"><h2>Standings</h2>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>#</th><th class="sh-l">Team</th><th>W-L-T</th><th>Cat %</th></tr></thead><tbody id="standings"></tbody></table></div></div>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>#</th><th class="sh-l">Team</th><th>W-L-T</th><th>Cat %</th></tr></thead><tbody id="standings"></tbody></table></div>
+      <p class="sh-note sh-footnote">W-L-T = weekly matchups won, lost and tied. Cat % = share of single categories won across all completed weeks (each week has 9 categories; ties not counted). It breaks ties in the standings and shows how dominant a team has been.</p></div>
     <div class="sh-card"><h2>News</h2><p class="sh-note">Tap a headline for the take.</p><div class="sh-moves" id="news-list"></div></div>
     <details class="sh-more">
       <summary>League details</summary>
@@ -202,7 +228,6 @@
     </details>
   </section>
 
-  <p class="sh-foot sh-quote-line" id="quote"></p>
   <details class="sh-foot">
     <summary>How this works</summary>
     <ul>
@@ -248,7 +273,37 @@
   // Quote of the week: one line at the bottom
   const q = (L.quote || [])[0];
   const qText = q && (q.quote || q.text), qBy = q && (q.player || q.by);
-  if (qText) $('quote').textContent = '“' + qText + '” — ' + qBy; else $('quote').hidden = true;
+  const qc = $('quote-card');
+  if (qText) {
+    if (q.photo) { const ph = document.createElement('img'); ph.src = q.photo; ph.alt = qBy; ph.className = 'sh-qphoto'; ph.referrerPolicy = 'no-referrer'; ph.onerror = () => ph.remove(); qc.append(ph); }
+    const body = el('div'); body.append(el('p', 'Quote of the week', 'sh-stat-label'), el('blockquote', '“' + qText + '”'), el('figcaption', '— ' + qBy + (q.role ? ', ' + q.role : '')));
+    if (q.credit) body.append(el('p', q.credit, 'sh-credit')); qc.append(body);
+  } else qc.hidden = true;
+
+  // Front page: league facts and every team's logo
+  const INFO = (L.info || [])[0];
+  if (INFO) {
+    $('league-name').textContent = INFO.name || 'The league';
+    const facts = [
+      ['Teams', INFO.size + ' teams'],
+      ['Format', (INFO.scoring || '') + ': each week you play one team, and whoever wins more of the ' + (INFO.cats || []).length + ' categories wins the week.'],
+      ['Categories', (INFO.cats || []).join(', ') + ' (fewer turnovers is better).'],
+      ['Season', INFO.weeks + ' regular-season weeks (Monday to Sunday), then the top ' + INFO.playoff_teams + ' make the playoffs. This is week ' + INFO.current_week + '.'],
+      ['Lineup', INFO.slots + '.'],
+      ['Moves', INFO.adds + ' adds per week. ' + INFO.lock + ', so you can change your lineup every day.'],
+      ['Draft', (INFO.draft || '') + (INFO.draft_date ? ' on ' + new Date(INFO.draft_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '') + '.'],
+    ];
+    fill('league-info', facts.map(([a, b]) => { const dv = el('div'); dv.append(el('dt', a), el('dd', b, 'sh-plain')); return dv; }));
+    fill('team-grid', (INFO.teams || []).map((t) => {
+      const b = el('button', undefined, 'sh-teamcard'); b.type = 'button';
+      const lg = el('span', undefined, 'sh-logo sh-logo-sm'); lg.textContent = initials(t.team);
+      if (t.logo) { const im = document.createElement('img'); im.src = t.logo; im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onload = () => lg.replaceChildren(im); }
+      const tx = el('span'); tx.append(el('span', t.team, 'sh-teamname'), el('span', '#' + t.rank + ' · ' + t.record, 'sh-lock'));
+      b.append(lg, tx);
+      b.addEventListener('click', () => { if (!TEAMS[t.slug]) return; team = t.slug; render(team); show('overview'); writeUrl(); window.scrollTo({ top: 0 }); });
+      return b;
+    }));
+  }
 
   const CATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FG%', 'FT%'];
   const rankTint = (c, k) => { if (k && k <= 3) tint(c, true); else if (k >= 10) tint(c, false); };
@@ -333,9 +388,9 @@
   };
 
   // Page (hash) and team (?team=) live in the URL, so any view can be linked; old page names still work
-  const PAGES = ['overview', 'matchup', 'roster', 'waivers', 'trades'];
+  const PAGES = ['home', 'overview', 'matchup', 'roster', 'waivers', 'trades'];
   const OLD = { today: 'overview', news: 'overview', league: 'overview', week: 'matchup', ahead: 'matchup' };
-  const pageFrom = (h) => PAGES.includes(h) ? h : OLD[h] || 'overview';
+  const pageFrom = (h) => PAGES.includes(h) ? h : OLD[h] || 'home';
   let page = pageFrom(location.hash.slice(1));
   let team = new URLSearchParams(location.search).get('team');
   if (!TEAMS[team]) team = TEAMS[DEFAULT] ? DEFAULT : order[0];
