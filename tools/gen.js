@@ -19,6 +19,11 @@ window.GEN = async function (opts = {}) {
   const sch = await F(`/apis/v3/games/fba/seasons/${SEASON}?view=proTeamSchedules_wl`);
   const g = {}, abbr = {};
   for (const t of sch.settings.proTeams) { abbr[t.id] = t.abbrev; g[t.id] = {}; for (const [sp, arr] of Object.entries(t.proGamesByScoringPeriod || {})) g[t.id][sp] = arr.length; }
+  // Real lock times: each day's first tip-off, shown in Malaysia time
+  const FIRST = {}; for (const t of sch.settings.proTeams) for (const [sp, arr] of Object.entries(t.proGamesByScoringPeriod || {})) for (const gm of arr) if (gm.date && (!FIRST[sp] || gm.date < FIRST[sp])) FIRST[sp] = gm.date;
+  const myt = (ms, o) => new Date(ms).toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', hour: 'numeric', minute: '2-digit', hour12: true, ...o }).replace(' am', ' AM').replace(' pm', ' PM');
+  const lockTxt = (sp) => FIRST[sp] ? myt(FIRST[sp], { weekday: 'short' }) : '—';
+  const nextLockSp = () => Object.keys(FIRST).map(Number).filter((sp) => FIRST[sp] > Date.now()).sort((a, b) => a - b)[0];
   const CUR = (await F(B + '?view=mStatus')).scoringPeriodId;           // today's scoring period (US date)
   const FROM = Math.max(opts.fromSp || CUR, WEEKS[WEEK][0]);              // first day still to be played
   const d = await F(B + `?view=mRoster&view=mTeam&view=mMatchup&view=mMatchupScore&scoringPeriodId=${Math.max(CUR, WEEKS[WEEK][0])}`);
@@ -165,8 +170,8 @@ window.GEN = async function (opts = {}) {
     const matchup = CAT.map((c, i) => ({ category: c, order: i + 1, plan: plan(w4.cats[i], punts.includes(c)), you_now: nowMe[i], opp_now: nowOpp[i], you_proj: pm[i], opp_proj: po[i], win_pct: w4.cats[i] }));
     const scoreTxt = (bMe.w + bMe.l + bMe.t) ? ` Score so far: ${bMe.w}–${bMe.l}–${bMe.t}.` : '';
     const cnt = s4.map((sp) => me.filter((x) => g[x.pt]?.[sp] && x.p > 0).length), ocnt = s4.map((sp) => om.filter((x) => g[x.pt]?.[sp] && x.p > 0).length);
-    const daygrid = s4.map((sp, i) => ({ order: i + 1, day: DAYS[i], lock_myt: sp < FROM ? "Played" : LOCK[i], you_games: cnt[i], you_open: Math.max(0, 10 - cnt[i]), opp_games: ocnt[i], opp_open: Math.max(0, 10 - ocnt[i]), edge: Math.min(10, cnt[i]) - Math.min(10, ocnt[i]) }));
-    const lineup = s4.map((sp, i) => { const pl = me.filter((x) => g[x.pt]?.[sp] && x.p > 0).sort((a, b) => b.v - a.v); const st = pl.slice(0, 10), bn = pl.slice(10); return { day: DAYS[i], order: i + 1, lock_myt: sp < FROM ? "Played" : LOCK[i], open_slots: Math.max(0, 10 - pl.length), lineup: st.map((x) => short(x.n)).join(', ') || 'Nobody plays', sit: bn.length ? 'Bench ' + bn.map((x) => short(x.n)).join(', ') : (pl.length === 10 ? 'Exactly 10' : '') }; });
+    const daygrid = s4.map((sp, i) => ({ order: i + 1, day: DAYS[i], lock_myt: sp < FROM ? "Played" : lockTxt(sp), you_games: cnt[i], you_open: Math.max(0, 10 - cnt[i]), opp_games: ocnt[i], opp_open: Math.max(0, 10 - ocnt[i]), edge: Math.min(10, cnt[i]) - Math.min(10, ocnt[i]) }));
+    const lineup = s4.map((sp, i) => { const pl = me.filter((x) => g[x.pt]?.[sp] && x.p > 0).sort((a, b) => b.v - a.v); const st = pl.slice(0, 10), bn = pl.slice(10); return { day: DAYS[i], order: i + 1, lock_myt: sp < FROM ? "Played" : lockTxt(sp), open_slots: Math.max(0, 10 - pl.length), lineup: st.map((x) => short(x.n)).join(', ') || 'Nobody plays', sit: bn.length ? 'Bench ' + bn.map((x) => short(x.n)).join(', ') : (pl.length === 10 ? 'Exactly 10' : '') }; });
     const row = (x, extra) => { const p = x.raw; const s = split(p, '00' + SEASON), l7 = split(p, '01' + SEASON), l15 = split(p, '02' + SEASON); const a = s?.a || {}; const v = s && s.gp ? val(a, punts) : null, v15 = l15 && l15.gp ? val(l15.a, punts) : null;
       return { player: x.n, nba: abbr[x.pt], pos: pos(p), inj: x.inj === 'ACTIVE' ? '' : x.inj.replace(/_/g, ' ').toLowerCase(), gp: s?.gp || 0, min: f1(a[40]), min_l7: l7 && l7.gp ? f1(l7.a[40]) : null, pts: f1(a[0]), reb: f1(a[6]), ast: f1(a[3]), stl: f1(a[2]), blk: f1(a[1]), tpm: f1(a[17]), to: f1(a[11]), fg: pct(a[13], a[14]), ft: pct(a[15], a[16]), value: f1(v), value_l15: f1(v15), trend: v15 == null || v == null ? '' : (v15 - v >= 1 ? 'up' : v15 - v <= -1 ? 'down' : ''), ...extra }; };
     const roster = me.map((x) => row(x, { pid: x.raw.id, g_wk4: wkG(x.pt, WEEK), g_wk5: wkG(x.pt, WEEK + 1), g_wk6: wkG(x.pt, WEEK + 2), note: x.slot === 13 ? 'IR' : (x.inj === 'OUT' ? 'Out' : '') })).sort((a, b) => (b.value ?? -99) - (a.value ?? -99)).map((r, i) => ({ ...r, order: i + 1 }));
@@ -225,7 +230,8 @@ window.GEN = async function (opts = {}) {
     const likely = matchup.filter((m) => m.plan === 'Likely').map((m) => m.category), toss = matchup.filter((m) => m.plan === 'Toss-up').map((m) => m.category), unl = matchup.filter((m) => m.plan === 'Unlikely').map((m) => m.category);
     const need = Math.max(0, 5 - likely.length);
     const dtd = injured.filter((x) => x.inj === 'DAY_TO_DAY');
-    const today = [{ order: 1, label: 'Next lock', text: 'The next day\'s first tip, usually about 8 AM MYT.' + (dtd.length ? ' Check ' + dtd.map((x) => x.n).join(', ') + ' before it.' : '') },
+    const nl = nextLockSp(); const nlDay = nl != null && SP(WEEK).includes(nl) ? DAYS[SP(WEEK).indexOf(nl)] : null;
+    const today = [{ order: 1, label: 'Next lock', text: (nl != null ? `${myt(FIRST[nl], { weekday: 'short', day: 'numeric', month: 'short' })} MYT, the first tip of ${nlDay ? { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' }[nlDay.slice(0, 3)] : 'the next day'}'s US games. Adds, drops and lineups for that day must be set before then.` : 'The next day\'s first tip.') + (dtd.length ? ' Check ' + dtd.map((x) => x.n).join(', ') + ' before it.' : '') },
       { order: 2, label: 'This week', text: `Week ${WEEK} vs ${on}: about ${w4.win}%.${scoreTxt} Likely wins: ${likely.join(', ') || 'none'}.${toss.length ? ' Coin flips: ' + toss.join(', ') + '.' : ''}` },
       { order: 3, label: 'Adds', text: `${used} of 4 used this week. ${left} left.` },
       { order: 4, label: 'Do now', text: doNow },
