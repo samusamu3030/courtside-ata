@@ -139,8 +139,13 @@
   .sh-num { flex: none; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--panel); color: var(--muted); font-size: 0.8rem; display: grid; place-items: center; }
   .sh-newsgrid .sh-detail { margin-left: 2.4rem; }
   .sh-detail a { color: inherit; }
-  body:not(.is-home) .sh-site { display: none; }
-  body.is-home .sh-teamhead, body.is-home .sh-tabs { display: none; }
+  /* Home uses the same header and tab bar as team pages; team tabs wait until a team is chosen */
+  .sh-head-logos { display: none; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  body.is-home .sh-head-logos { display: flex; }
+  body.is-home .sh-teamhead .sh-back { display: none; }
+  .sh-head-logos img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(245, 241, 232, 0.25); }
+  .sh-tabs button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .sh-logo .sh-ball { width: 100%; height: 100%; display: block; }
   .sh-footnote { margin-top: 8px; }
   .sh-teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 8px; }
   .sh-teamcard { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer; }
@@ -228,27 +233,6 @@
 </head>
 <body>
 <div class="sh">
-  <header class="sh-site" id="home-hero">
-    <svg class="sh-court" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <g fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="300" y1="0" x2="300" y2="300"/><circle cx="300" cy="150" r="48"/><circle cx="300" cy="150" r="14"/>
-        <path d="M0 40 H90 A110 110 0 0 1 90 260 H0"/><rect x="0" y="105" width="120" height="90"/>
-        <path d="M600 40 H510 A110 110 0 0 0 510 260 H600"/><rect x="480" y="105" width="120" height="90"/>
-      </g>
-    </svg>
-    <div class="sh-site-in">
-      <p class="sh-kicker">Fantasy basketball league · 2026–27</p>
-      <h1 class="sh-site-title"><span class="sh-site-line">All Things Athletic</span> <span class="sh-site-line"><span class="sh-site-abbr">(ATA)</span> Season 6</span></h1>
-      <p class="sh-site-tag">Odds, lineups, pickups and trade ideas for all 12 teams.</p>
-      <div class="sh-site-pick">
-        <label for="home-team" class="sh-sr">Choose a team</label>
-        <select id="home-team"><option value="" selected disabled>Choose a team…</option></select>
-      </div>
-      <div class="sh-site-logos" id="hero-logos" aria-hidden="true"></div>
-      <p class="sh-site-stamp" id="home-stamp"></p>
-    </div>
-  </header>
-
   <header class="sh-teamhead">
     <p class="sh-back">All Things Athletic (ATA) Season 6</p>
     <div class="sh-brand">
@@ -259,6 +243,7 @@
         <p class="sh-stamp" id="stamp"></p>
       </div>
     </div>
+    <div class="sh-head-logos" id="hero-logos" aria-hidden="true"></div>
     <div class="sh-pick">
       <label for="team">Team</label>
       <select id="team"></select>
@@ -385,13 +370,14 @@
   const fill = (id, list, empty) => { const t = $(id); if (!t) return; if (!list.length && empty) { t.replaceChildren(el('p', empty, 'sh-empty')); return; } t.replaceChildren(...list); };
   const initials = (n) => n.replace(/['’]/g, '').split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
-  if (D.updated) { $('stamp').textContent = 'Updated ' + D.updated; $('home-stamp').textContent = 'Updated ' + D.updated; }
+  if (D.updated) $('stamp').textContent = 'Updated ' + D.updated;
 
   // Team picker, in standings order
   const order = sortRows(L.standings).map((s) => Object.keys(TEAMS).find((k) => TEAMS[k].team === s.team)).filter(Boolean);
   for (const k of Object.keys(TEAMS)) if (!order.includes(k)) order.push(k);
   const sel = $('team');
-  sel.replaceChildren(...order.map((k) => new Option(TEAMS[k].team + ' (' + TEAMS[k].record + ')', k)));
+  const ph = new Option('Choose a team…', ''); ph.disabled = true;
+  sel.replaceChildren(ph, ...order.map((k) => new Option(TEAMS[k].team + ' (' + TEAMS[k].record + ')', k)));
 
   // Quote of the week: one line at the bottom
   const q = (L.quote || [])[0];
@@ -421,7 +407,8 @@
       const hue = Math.round(best.h / best.w); resolve(`hsl(${hue}, 72%, 42%)`);
     } catch (e) { resolve(null); } };
     im.onerror = () => resolve(null); im.src = src; });
-  const applyTeamColor = async (src) => { const col = await teamColor(src); const root = document.documentElement.style;
+  let colorTicket = 0;
+  const applyTeamColor = async (src) => { const t = ++colorTicket; const col = await teamColor(src); if (t !== colorTicket) return; const root = document.documentElement.style;
     if (col) { root.setProperty('--team', col); root.setProperty('--team-soft', col.replace('hsl(', 'hsla(').replace(')', ', 0.16)')); }
     else { root.removeProperty('--team'); root.removeProperty('--team-soft'); } };
 
@@ -482,7 +469,7 @@
     $('team-name').textContent = name;
     const mono = $('mono'); mono.replaceChildren(); mono.textContent = initials(name);
     const logoSrc = LOGOS[key] || T.logo; applyTeamColor(logoSrc);
-    if (logoSrc) { const img = document.createElement('img'); img.src = logoSrc; img.alt = ''; img.referrerPolicy = 'no-referrer'; img.onload = () => mono.replaceChildren(img); img.onerror = () => { mono.textContent = initials(name); }; }
+    if (logoSrc) { const img = document.createElement('img'); img.src = logoSrc; img.alt = ''; img.referrerPolicy = 'no-referrer'; img.onload = () => { if (!document.body.classList.contains('is-home')) mono.replaceChildren(img); }; img.onerror = () => { mono.textContent = initials(name); }; }
     $('team-sub').textContent = T.record + ' · ' + (T.punts && T.punts.length ? 'punting ' + T.punts.join(' and ') : 'balanced build');
     sel.value = key;
 
@@ -552,9 +539,19 @@
   if (!TEAMS[team]) team = TEAMS[DEFAULT] ? DEFAULT : order[0];
   const writeUrl = () => history.replaceState(null, '', page === 'home' ? location.pathname : '?team=' + encodeURIComponent(team) + '#' + page);
   const LEAGUE = 'All Things Athletic (ATA) Season 6';
+  // Home: the same header as a team page, but for the whole league, and no team selected
+  const BALL = '<svg class="sh-ball" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#e8833a"/><g fill="none" stroke="#462211" stroke-width="1.1"><circle cx="12" cy="12" r="11"/><path d="M1 12h22M12 1v22M4.2 4.2c3.2 3 3.2 12.6 0 15.6M19.8 4.2c-3.2 3-3.2 12.6 0 15.6"/></g></svg>';
+  const leagueHeader = () => {
+    $('mono').innerHTML = BALL; $('team-name').textContent = LEAGUE;
+    $('team-sub').textContent = 'Fantasy basketball league · 2026–27 · ' + Object.keys(TEAMS).length + ' teams';
+    sel.value = ''; applyTeamColor(null);
+  };
   const show = (id) => {
     page = pageFrom(id);
+    const wasHome = document.body.classList.contains('is-home');
     document.body.classList.toggle('is-home', page === 'home');
+    if (page === 'home') leagueHeader(); else if (wasHome) render(team);
+    for (const b of document.querySelectorAll('.sh-tabs button')) if (b.dataset.page !== 'home') { b.disabled = page === 'home'; b.title = page === 'home' ? 'Choose a team first' : ''; }
     document.title = page === 'home' ? LEAGUE : TEAMS[team].team + ' · ' + LEAGUE;
     for (const s of document.querySelectorAll('section.sh-page')) s.hidden = s.id !== 'p-' + page;
     for (const b of document.querySelectorAll('.sh-tabs button')) { const on = b.dataset.page === page; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
@@ -564,11 +561,7 @@
     show(b.dataset.page); writeUrl();
     if (nav && nav.getBoundingClientRect().top <= 1) window.scrollTo({ top: nav.offsetTop - 8 });
   });
-  sel.addEventListener('change', () => { team = sel.value; render(team); show(page); writeUrl(); });
-  // Home picker starts empty; choosing a team opens its Overview
-  const hp = $('home-team');
-  for (const k of order) hp.append(new Option(TEAMS[k].team + ' (' + TEAMS[k].record + ')', k));
-  hp.addEventListener('change', () => { if (!hp.value) return; team = hp.value; render(team); show('overview'); writeUrl(); window.scrollTo({ top: 0 }); hp.value = ''; });
+  sel.addEventListener('change', () => { if (!sel.value) return; const fromHome = page === 'home'; team = sel.value; render(team); show(fromHome ? 'overview' : page); writeUrl(); if (fromHome) window.scrollTo({ top: 0 }); });
   window.addEventListener('hashchange', () => { show(location.hash.slice(1)); });
   render(team);
   show(page);
