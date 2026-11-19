@@ -119,7 +119,8 @@ window.GEN = async function (opts = {}) {
   const after = (Rr, out, inn, tid) => { let r = [...Rr.filter((x) => !out.includes(x.n)), ...inn.map((x) => ({ ...x, slot: 0, v: val(x.s, PUN[tid]) }))]; const cut = [], add = [];
     while (r.length > Rr.length) { const c = r.filter((x) => x.slot !== 13 && !inn.some((y) => y.n === x.n)).sort((a, b) => a.v - b.v)[0]; cut.push(c.n); r = r.filter((x) => x !== c); }
     if (r.length < Rr.length && FILL[tid]) { r.push(FILL[tid]); add.push(FILL[tid].n); } return { r, cut, add }; };
-  const okT = (x) => x.slot !== 13 && x.inj !== 'OUT' && (x.s[40] || 0) >= 20;
+  const NOTRADE = new Set(opts.noTrade || []);   // e.g. streamers a manager doesn't want in trade ideas
+  const okT = (x) => x.slot !== 13 && x.inj !== 'OUT' && (x.s[40] || 0) >= 20 && !NOTRADE.has(x.n);
   const sgn1 = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
   const tradeSearch = (A) => {
     const mine = R[A], base = prod(mine), give = mine.filter(okT), best = [];
@@ -289,6 +290,16 @@ window.GEN = async function (opts = {}) {
 
   const files = { 'league/ranks': ranks, 'league/teamstats': teamstats, 'league/standings': standings, 'league/txns': txns, 'league/perminute': perminute };
   if (opts.quote) files['league/quote'] = [opts.quote];
+  // League info for the front page
+  const st = (await F(B + '?view=mSettings')).settings;
+  const SLOTN = { 0: 'PG', 1: 'SG', 2: 'SF', 3: 'PF', 4: 'C', 5: 'G', 6: 'F', 11: 'UTIL', 12: 'Bench', 13: 'IR' };
+  const slots = Object.entries(st.rosterSettings?.lineupSlotCounts || {}).filter(([k, n]) => n > 0 && SLOTN[k]).map(([k, n]) => (n > 1 ? n + '× ' : '') + SLOTN[k]);
+  const STATN = { 0: 'PTS', 6: 'REB', 3: 'AST', 2: 'STL', 1: 'BLK', 17: '3PM', 11: 'TO', 19: 'FG%', 20: 'FT%' };
+  files['league/info'] = [{ order: 1, name: st.name, size: st.size, scoring: st.scoringSettings?.scoringType === 'H2H_MOST_CATEGORIES' ? 'Head-to-head, most categories' : st.scoringSettings?.scoringType,
+    cats: CAT.filter((c) => (st.scoringSettings?.scoringItems || []).some((i) => STATN[i.statId] === c)), weeks: st.scheduleSettings?.matchupPeriodCount, playoff_teams: st.scheduleSettings?.playoffTeamCount,
+    draft: st.draftSettings?.type === 'SNAKE' ? 'Snake draft' : st.draftSettings?.type, draft_date: st.draftSettings?.date ? new Date(st.draftSettings.date + 8 * 3600e3).toISOString().slice(0, 10) : null,
+    slots: slots.join(', '), lock: st.rosterSettings?.lineupLocktimeType === 'INDIVIDUAL_GAME' ? 'Each player locks at his own game’s tip-off' : 'Daily', adds: opts.addsPerWeek || 4,
+    current_week: WEEK, teams: standings.map((s) => { const t = d.teams.find((x) => names[x.id] === s.team); return { team: s.team, slug: slug(s.team), logo: t?.logo || '', record: s.record, rank: s.order }; }) }];
   for (const t of d.teams) files['teams/' + slug(names[t.id])] = team(t.id);
   window.SITEFILES = files;
   return { teams: d.teams.length, punts: Object.fromEntries(d.teams.map((t) => [names[t.id], PUN[t.id].join('+') || 'none'])), bytes: JSON.stringify(files).length };
