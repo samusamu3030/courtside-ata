@@ -144,7 +144,15 @@
   body.is-home .sh-head-logos { display: flex; }
   body.is-home .sh-teamhead .sh-back { display: none; }
   .sh-head-logos img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(245, 241, 232, 0.25); }
-  .sh-tabs button:disabled { opacity: 0.45; cursor: not-allowed; }
+  /* Home shows only the Home tab; the team tabs slide in once a team is chosen */
+  body.is-home .sh-tabs button:not(.sh-tab-home) { display: none; }
+  @keyframes sh-tab-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+  body:not(.is-home) .sh-tabs button:not(.sh-tab-home) { animation: sh-tab-in 0.35s ease-out both; }
+  body:not(.is-home) .sh-tabs button:nth-child(3) { animation-delay: 0.04s; }
+  body:not(.is-home) .sh-tabs button:nth-child(4) { animation-delay: 0.08s; }
+  body:not(.is-home) .sh-tabs button:nth-child(5) { animation-delay: 0.12s; }
+  body:not(.is-home) .sh-tabs button:nth-child(6) { animation-delay: 0.16s; }
+  @media (prefers-reduced-motion: reduce) { body:not(.is-home) .sh-tabs button:not(.sh-tab-home) { animation: none; } }
   .sh-logo .sh-ball { width: 100%; height: 100%; display: block; }
   .sh-footnote { margin-top: 8px; }
   .sh-teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 8px; }
@@ -551,7 +559,6 @@
     const wasHome = document.body.classList.contains('is-home');
     document.body.classList.toggle('is-home', page === 'home');
     if (page === 'home') leagueHeader(); else if (wasHome) render(team);
-    for (const b of document.querySelectorAll('.sh-tabs button')) if (b.dataset.page !== 'home') { b.disabled = page === 'home'; b.title = page === 'home' ? 'Choose a team first' : ''; }
     document.title = page === 'home' ? LEAGUE : TEAMS[team].team + ' · ' + LEAGUE;
     for (const s of document.querySelectorAll('section.sh-page')) s.hidden = s.id !== 'p-' + page;
     for (const b of document.querySelectorAll('.sh-tabs button')) { const on = b.dataset.page === page; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
