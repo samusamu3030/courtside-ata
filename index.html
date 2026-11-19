@@ -96,6 +96,17 @@
   .sh-more > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 8px 0; border-top: 1px solid var(--line); }
   .sh-more[open] > summary { margin-bottom: 20px; }
   .sh-lock { color: var(--muted); font-size: 0.75rem; }
+  .sh-logo { overflow: hidden; }
+  .sh-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sh-stat-why { margin: 8px 0 0; font-size: 0.85rem; line-height: 1.4; }
+  .sh-detail { margin: 6px 0 0 5rem; display: grid; gap: 6px; }
+  .sh-detail p { margin: 0; color: var(--muted); }
+  .sh-detail p:first-child:not(:only-child) { color: var(--fg); }
+  @media (max-width: 30rem) { .sh-detail, .sh-moves p { margin-left: 0; } }
+  td.sh-player { text-align: left; }
+  .sh-player-in { display: flex; align-items: center; gap: 8px; }
+  .sh-face { width: 36px; height: 26px; object-fit: cover; object-position: top; border-radius: 6px; background: var(--panel); flex: none; }
+  .sh-face-blank { visibility: visible; }
   #lineup td { vertical-align: top; }
   #lineup td.sh-wrap { min-width: 0; }
   .sh-quote-line { font-family: var(--serif); font-size: 0.95rem; margin: 0; }
@@ -176,7 +187,7 @@
   <section class="sh-page" id="p-waivers" hidden>
     <div class="sh-card"><h2>Summary</h2><dl class="sh-today" id="waiver-summary"></dl></div>
     <div class="sh-card"><h2>Suggested moves</h2><p class="sh-note">Tap a move for the reasoning.</p><div class="sh-moves" id="moves-due"></div></div>
-    <div class="sh-card"><h2>Best free agents</h2><p class="sh-note">This season's stats, 21+ minutes. Plays = games left this week.</p>
+    <div class="sh-card"><h2>Top 5 free agents</h2><p class="sh-note">This season's stats, 21+ minutes. Plays = games left this week.</p>
       <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th class="sh-l">Plays</th><th>Min</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th><th>Value</th></tr></thead><tbody id="waivers-body"></tbody></table></div></div>
   </section>
 
@@ -244,11 +255,14 @@
   const dl = (id, list, label, text, plain, empty) => fill(id, list.map((r) => { const d = el('div'); d.append(el('dt', r[label]), el('dd', text(r), plain ? 'sh-plain' : '')); return d; }), empty);
   const details = (id, list, chip, prefix, title, body, empty) => fill(id, list.map((m) => {
     const det = el('details'); const s = el('summary'); s.append(el('span', m[chip], 'sh-chip ' + prefix + m[chip]), el('span', m[title]));
-    det.append(s, el('p', body(m))); return det;
+    const b = body(m); if (Array.isArray(b)) { const box = el('div', undefined, 'sh-detail'); for (const line of b.filter(Boolean)) box.append(el('p', line)); det.append(s, box); } else det.append(s, el('p', b)); return det;
   }), empty);
+  // Player cell with ESPN headshot (falls back to a blank circle if the photo is missing)
+  const headshot = (pid) => { const i = document.createElement('img'); i.className = 'sh-face'; i.alt = ''; i.loading = 'lazy'; i.width = 36; i.height = 26; if (pid) i.src = 'https://a.espncdn.com/i/headshots/nba/players/full/' + pid + '.png'; i.onerror = () => { i.removeAttribute('src'); i.classList.add('sh-face-blank'); }; if (!pid) i.classList.add('sh-face-blank'); return i; };
+  const playerCell = (pid, text, sub) => { const c = el('td', undefined, 'sh-player'); const w = el('div', undefined, 'sh-player-in'); const t = el('div'); t.append(el('span', text)); if (sub) t.append(el('div', sub, 'sh-lock')); w.append(headshot(pid), t); c.append(w); return c; };
   const winCell = (r) => { const w = Number(r.win_pct); return td(blank(r.win_pct) ? '—' : w + '%', 'sh-v ' + (r.plan === 'Punt' || blank(r.win_pct) ? '' : w >= 60 ? 'sh-up' : w <= 40 ? 'sh-down' : '')); };
   const scoreOf = (T) => { const m = (sortRows(T.matchnotes).map((r) => r.text).join(' ') + ' ' + sortRows(T.today).map((r) => r.text).join(' ')).match(/Score so far: (\d+)[–-](\d+)[–-](\d+)/); return m ? m[1] + '–' + m[2] + (m[3] !== '0' ? '–' + m[3] : '') : null; };
-  const stat = (label, big, sub, cls) => { const d = el('div', undefined, 'sh-stat'); d.append(el('p', label, 'sh-stat-label'), el('p', big, 'sh-stat-big' + (cls ? ' ' + cls : ''))); if (sub) d.append(el('p', sub, 'sh-stat-sub')); return d; };
+  const stat = (label, big, sub, cls, why) => { const d = el('div', undefined, 'sh-stat'); d.append(el('p', label, 'sh-stat-label'), el('p', big, 'sh-stat-big' + (cls ? ' ' + cls : ''))); if (sub) d.append(el('p', sub, 'sh-stat-sub')); if (why) d.append(el('p', why, 'sh-stat-why')); return d; };
   const pctCls = (w) => blank(w) ? '' : w >= 60 ? 'good' : w <= 40 ? 'bad' : '';
 
   const render = (key) => {
@@ -256,7 +270,8 @@
     const name = T.team;
     document.title = name + ' · ATA Season 6 Advisor';
     $('team-name').textContent = name;
-    $('mono').textContent = initials(name);
+    const mono = $('mono'); mono.replaceChildren(); mono.textContent = initials(name);
+    if (T.logo) { const img = document.createElement('img'); img.src = T.logo; img.alt = ''; img.referrerPolicy = 'no-referrer'; img.onload = () => mono.replaceChildren(img); img.onerror = () => { mono.textContent = initials(name); }; }
     $('team-sub').textContent = T.record + ' · ' + (T.punts && T.punts.length ? 'punting ' + T.punts.join(' and ') : 'balanced build');
     sel.value = key;
 
@@ -264,12 +279,12 @@
     const out = sortRows(T.outlook); const now = out[0] || {}, next = out[1] || {};
     const score = scoreOf(T);
     fill('hero', [
-      stat('This week' + (now.week ? ' (week ' + now.week + ')' : ''), blank(now.win_pct) ? '—' : now.win_pct + '% to win', 'vs ' + (now.opponent || '—') + (score ? ' · score ' + score : ''), pctCls(now.win_pct)),
-      stat('Next week' + (next.week ? ' (week ' + next.week + ')' : ''), blank(next.win_pct) ? '—' : next.win_pct + '% to win', 'vs ' + (next.opponent || '—') + (next.dates ? ' · ' + next.dates : ''), pctCls(next.win_pct)),
+      stat('This week' + (now.week ? ' (week ' + now.week + ')' : ''), blank(now.win_pct) ? '—' : now.win_pct + '% to win', 'vs ' + (now.opponent || '—') + (score ? ' · score ' + score : ''), pctCls(now.win_pct), T.why_now),
+      stat('Next week' + (next.week ? ' (week ' + next.week + ')' : ''), blank(next.win_pct) ? '—' : next.win_pct + '% to win', 'vs ' + (next.opponent || '—') + (next.dates ? ' · ' + next.dates : ''), pctCls(next.win_pct), T.why_next),
     ]);
     dl('today-list', sortRows(T.today), 'label', (r) => r.text);
     fill('standings', sortRows(L.standings).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.order), td(r.team, 'sh-l'), td(r.record), td(r.cat_pct + '%')); return tr; }));
-    details('news-list', sortRows(T.news), 'verdict', 'v-', 'headline', (n) => n.take + ' (' + n.source + ')', 'No news for this team.');
+    details('news-list', sortRows(T.news), 'verdict', 'v-', 'headline', (n) => [n.yours ? 'Involves this team\'s players.' : '', n.detail, 'Our take: ' + n.take, 'Source: ' + n.source], 'No news for this team.');
     const pm = sortRows(L.perminute); const me = pm.find((r) => r.team === name);
     const ord = (k) => k + (k % 10 === 1 && k !== 11 ? 'st' : k % 10 === 2 && k !== 12 ? 'nd' : k % 10 === 3 && k !== 13 ? 'rd' : 'th');
     fill('pm-bars', me ? CATS.map((c) => {
@@ -296,7 +311,7 @@
     const roster = sortRows(T.roster);
     fill('roster-body', roster.map((p) => {
       const tr = el('tr'); const v = valueCell(p.value); if (p.trend === 'up') v.textContent += ' ▲'; else if (p.trend === 'down') v.textContent += ' ▼';
-      tr.append(td(p.player + (p.note === 'IR' ? ' (IR)' : p.inj ? ' (' + p.inj + ')' : '')), td(f1(p.min)), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.stl)), td(f1(p.tpm)), td(f3(p.fg)), td(f3(p.ft)), v); return tr;
+      tr.append(playerCell(p.pid, p.player, [p.nba, p.pos, p.note === 'IR' ? 'IR' : p.inj].filter(Boolean).join(' · ')), td(f1(p.min)), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.stl)), td(f1(p.tpm)), td(f3(p.fg)), td(f3(p.ft)), v); return tr;
     }));
     dl('injuries', sortRows(T.injuries), 'status', (r) => r.player + ': ' + r.note, true, 'Everyone is healthy.');
     if (now.week) { $('gw0').textContent = 'Wk ' + now.week; $('gw1').textContent = 'Wk ' + (now.week + 1); $('gw2').textContent = 'Wk ' + (now.week + 2); }
@@ -310,10 +325,10 @@
     const pick = (re) => todays.filter((r) => re.test(r.label));
     dl('waiver-summary', [...pick(/^adds?$/i), ...pick(/do now|add|swap|stream/i).filter((r) => !/^adds?$/i.test(r.label))], 'label', (r) => r.text, false, 'No pickup suggested right now.');
     details('moves-due', sortRows(T.moves).filter((m) => m.kind !== 'Trade'), 'kind', 'k-', 'move', (m) => m.why, 'No moves needed right now.');
-    fill('waivers-body', sortRows(T.waivers).map((p) => { const tr = el('tr'); tr.append(td(p.player + ' (' + p.nba + ')' + (p.status === 'Waivers' ? ' · waivers' : '')), td(p.days, 'sh-l'), td(f1(p.min)), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.tpm)), valueCell(p.value)); return tr; }));
+    fill('waivers-body', sortRows(T.waivers).slice(0, 5).map((p) => { const tr = el('tr'); tr.append(playerCell(p.pid, p.player, p.nba + (p.status === 'Waivers' ? ' · waivers' : ' · free agent')), td(p.days, 'sh-l'), td(f1(p.min)), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.tpm)), valueCell(p.value)); return tr; }));
 
     // Trades
-    details('moves-trade', sortRows(T.moves).filter((m) => m.kind === 'Trade'), 'kind', 'k-', 'move', (m) => m.why, 'No trade ideas this week.');
+    details('moves-trade', sortRows(T.moves).filter((m) => m.kind === 'Trade'), 'kind', 'k-', 'move', (m) => m.detail || m.why, 'No trade that clearly helps both sides this week.');
     fill('profiles', sortRows(T.profiles).map((r) => { const tr = el('tr'); tr.append(td(r.team), pill(r.fit), td(r.they_need, 'sh-l'), td(r.they_spare, 'sh-l')); return tr; }));
   };
 
