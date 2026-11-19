@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ATA Season 6 Advisor</title>
-<meta name="description" content="Game-day advisor for every team in ATA Season 6: matchup odds, lineups, pickups, trades and league standings.">
+<title>All Things Athletic (ATA) Season 6</title>
+<meta name="description" content="Game-day guide for every team in All Things Athletic (ATA) Season 6, a fantasy basketball league: matchup odds, lineups, pickups, trades and standings.">
 <style>
   /* Layout: one centered column, team picker in the header, sticky page tabs, tables scroll inside their own boxes */
   :root {
@@ -110,6 +110,20 @@
   #lineup td { vertical-align: top; }
   #lineup td.sh-wrap { min-width: 0; }
   .sh-intro { margin: 0 0 10px; max-width: 42rem; }
+  /* Home is its own view: league header on top, no team header or team tabs */
+  .sh-site { text-align: center; padding: 28px 8px 8px; border-bottom: 1px solid var(--line); }
+  .sh-kicker { margin: 0; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sh-site-title { font-family: var(--serif); font-weight: 400; font-size: clamp(1.9rem, 6vw, 3rem); line-height: 1.1; margin: 8px 0 0; text-wrap: balance; }
+  .sh-site-abbr { color: var(--muted); }
+  .sh-site-tag { margin: 12px auto 0; max-width: 34rem; color: var(--muted); }
+  .sh-site-logos { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 20px auto 8px; max-width: 32rem; }
+  .sh-site-logos img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--panel); border: 1px solid var(--line); }
+  .sh-site .sh-stamp { margin-top: 8px; }
+  .sh-back { font: inherit; font-size: 0.85rem; color: var(--muted); background: none; border: 0; padding: 0 0 12px; cursor: pointer; }
+  .sh-back:hover { color: var(--fg); }
+  .sh-back:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  body:not(.is-home) .sh-site { display: none; }
+  body.is-home .sh-teamhead, body.is-home .sh-tabs { display: none; }
   .sh-footnote { margin-top: 8px; }
   .sh-teams { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 8px; }
   .sh-teamcard { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer; }
@@ -132,11 +146,20 @@
 </head>
 <body>
 <div class="sh">
-  <header>
+  <header class="sh-site" id="home-hero">
+    <p class="sh-kicker">Fantasy basketball · 2026–27</p>
+    <h1 class="sh-site-title">All Things Athletic <span class="sh-site-abbr">(ATA)</span> Season 6</h1>
+    <p class="sh-site-tag">The league's game-day guide: odds, lineups, pickups and trade ideas for all 12 teams.</p>
+    <div class="sh-site-logos" id="hero-logos" aria-hidden="true"></div>
+    <p class="sh-stamp" id="home-stamp"></p>
+  </header>
+
+  <header class="sh-teamhead">
+    <button type="button" class="sh-back" id="go-home">← All Things Athletic (ATA) Season 6</button>
     <div class="sh-brand">
       <span class="sh-logo" id="mono" aria-hidden="true">—</span>
       <div>
-        <h1 id="team-name">ATA Season 6</h1>
+        <h1 id="team-name">Team</h1>
         <p class="sh-sub" id="team-sub"></p>
         <p class="sh-stamp" id="stamp"></p>
       </div>
@@ -148,8 +171,7 @@
   </header>
 
   <nav class="sh-tabs" aria-label="Pages">
-    <button type="button" data-page="home" aria-selected="true">Home</button>
-    <button type="button" data-page="overview" aria-selected="false">Overview</button>
+    <button type="button" data-page="overview" aria-selected="true">Overview</button>
     <button type="button" data-page="matchup" aria-selected="false">Matchup</button>
     <button type="button" data-page="roster" aria-selected="false">Roster</button>
     <button type="button" data-page="waivers" aria-selected="false">Waivers</button>
@@ -158,9 +180,9 @@
 
   <section class="sh-page" id="p-home">
     <div class="sh-card"><h2>What this site is</h2>
-      <p class="sh-intro">A game-day helper for every team in our fantasy basketball league. Pick a team (tap a logo below or use the menu at the top) to see its odds for this week and next, a day-by-day lineup, injuries, the best free agents and trade ideas with other teams.</p>
+      <p class="sh-intro">A game-day helper for every team in our fantasy basketball league. Tap a team below to see its odds for this week and next, a day-by-day lineup, injuries, the best free agents and trade ideas with other teams.</p>
       <p class="sh-intro">Everything is worked out from ESPN league data and simulated weeks, with news from Locked On Fantasy Basketball. Claude prepares it, and it's refreshed every few days. It's a guide, not a rulebook: each manager makes their own calls.</p></div>
-    <div class="sh-card"><h2 id="league-name">The league</h2><dl class="sh-today" id="league-info"></dl></div>
+    <div class="sh-card"><h2>About the league</h2><dl class="sh-today" id="league-info"></dl></div>
     <div class="sh-card"><h2>The teams</h2><p class="sh-note">In standings order. Tap a team to open its page.</p><div class="sh-teams" id="team-grid"></div></div>
     <figure class="sh-qcard" id="quote-card"></figure>
   </section>
@@ -262,7 +284,7 @@
   const fill = (id, list, empty) => { const t = $(id); if (!t) return; if (!list.length && empty) { t.replaceChildren(el('p', empty, 'sh-empty')); return; } t.replaceChildren(...list); };
   const initials = (n) => n.replace(/['’]/g, '').split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 
-  if (D.updated) $('stamp').textContent = 'Updated ' + D.updated;
+  if (D.updated) { $('stamp').textContent = 'Updated ' + D.updated; $('home-stamp').textContent = 'Updated ' + D.updated; }
 
   // Team picker, in standings order
   const order = sortRows(L.standings).map((s) => Object.keys(TEAMS).find((k) => TEAMS[k].team === s.team)).filter(Boolean);
@@ -283,7 +305,7 @@
   // Front page: league facts and every team's logo
   const INFO = (L.info || [])[0];
   if (INFO) {
-    $('league-name').textContent = INFO.name || 'The league';
+    fill('hero-logos', (INFO.teams || []).filter((t) => t.logo).map((t) => { const im = document.createElement('img'); im.src = t.logo; im.alt = ''; im.title = t.team; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); return im; }));
     const facts = [
       ['Teams', INFO.size + ' teams'],
       ['Format', (INFO.scoring || '') + ': each week you play one team, and whoever wins more of the ' + (INFO.cats || []).length + ' categories wins the week.'],
@@ -323,7 +345,7 @@
   const render = (key) => {
     const T = TEAMS[key]; if (!T) return;
     const name = T.team;
-    document.title = name + ' · ATA Season 6 Advisor';
+    document.title = name + ' · All Things Athletic (ATA) Season 6';
     $('team-name').textContent = name;
     const mono = $('mono'); mono.replaceChildren(); mono.textContent = initials(name);
     if (T.logo) { const img = document.createElement('img'); img.src = T.logo; img.alt = ''; img.referrerPolicy = 'no-referrer'; img.onload = () => mono.replaceChildren(img); img.onerror = () => { mono.textContent = initials(name); }; }
@@ -394,9 +416,12 @@
   let page = pageFrom(location.hash.slice(1));
   let team = new URLSearchParams(location.search).get('team');
   if (!TEAMS[team]) team = TEAMS[DEFAULT] ? DEFAULT : order[0];
-  const writeUrl = () => history.replaceState(null, '', '?team=' + encodeURIComponent(team) + '#' + page);
+  const writeUrl = () => history.replaceState(null, '', page === 'home' ? location.pathname : '?team=' + encodeURIComponent(team) + '#' + page);
+  const LEAGUE = 'All Things Athletic (ATA) Season 6';
   const show = (id) => {
     page = pageFrom(id);
+    document.body.classList.toggle('is-home', page === 'home');
+    document.title = page === 'home' ? LEAGUE : TEAMS[team].team + ' · ' + LEAGUE;
     for (const s of document.querySelectorAll('section.sh-page')) s.hidden = s.id !== 'p-' + page;
     for (const b of document.querySelectorAll('.sh-tabs button')) { const on = b.dataset.page === page; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   };
@@ -405,7 +430,8 @@
     show(b.dataset.page); writeUrl();
     if (nav && nav.getBoundingClientRect().top <= 1) window.scrollTo({ top: nav.offsetTop - 8 });
   });
-  sel.addEventListener('change', () => { team = sel.value; render(team); writeUrl(); });
+  sel.addEventListener('change', () => { team = sel.value; render(team); show(page); writeUrl(); });
+  $('go-home').addEventListener('click', () => { show('home'); writeUrl(); window.scrollTo({ top: 0 }); });
   window.addEventListener('hashchange', () => { show(location.hash.slice(1)); });
   render(team);
   show(page);
