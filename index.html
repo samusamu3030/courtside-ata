@@ -111,14 +111,24 @@
   #lineup td.sh-wrap { min-width: 0; }
   .sh-intro { margin: 0 0 10px; max-width: 42rem; }
   /* Home is its own view: league header on top, no team header or team tabs */
-  .sh-site { text-align: center; padding: 28px 8px 8px; border-bottom: 1px solid var(--line); }
-  .sh-kicker { margin: 0; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
-  .sh-site-title { font-family: var(--serif); font-weight: 400; font-size: clamp(1.9rem, 6vw, 3rem); line-height: 1.1; margin: 8px 0 0; text-wrap: balance; }
-  .sh-site-abbr { color: var(--muted); }
-  .sh-site-tag { margin: 12px auto 0; max-width: 34rem; color: var(--muted); }
-  .sh-site-logos { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 20px auto 8px; max-width: 32rem; }
-  .sh-site-logos img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: var(--panel); border: 1px solid var(--line); }
-  .sh-site .sh-stamp { margin-top: 8px; }
+  .sh-site { --hero-bg: #13233a; --hero-fg: #f5f1e8; --hero-muted: #c7c2b6; --hero-accent: #e8833a;
+    position: relative; overflow: hidden; text-align: center; color: var(--hero-fg); background: radial-gradient(120% 90% at 50% 0%, #1f3a5c 0%, var(--hero-bg) 60%, #0c1726 100%); border-radius: 18px; padding: 40px 20px 28px; }
+  .sh-court { position: absolute; inset: 0; width: 100%; height: 100%; color: rgba(245, 241, 232, 0.08); }
+  .sh-site-in { position: relative; }
+  .sh-kicker { margin: 0; color: var(--hero-accent); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+  .sh-site-title { font-family: var(--serif); font-weight: 400; font-size: clamp(2.1rem, 7vw, 3.6rem); line-height: 1.05; margin: 12px 0 0; }
+  .sh-site-line { display: inline-block; }
+  .sh-site-abbr { color: var(--hero-accent); }
+  .sh-site-tag { margin: 14px auto 0; max-width: 30rem; color: var(--hero-muted); }
+  .sh-site-pick { margin: 22px auto 0; }
+  .sh-site-pick select { font: inherit; font-size: 1rem; min-width: min(100%, 17rem); padding: 10px 38px 10px 14px; border-radius: 999px; border: 1px solid rgba(245, 241, 232, 0.35); color: var(--hero-fg); background-color: rgba(255, 255, 255, 0.08); appearance: none; -webkit-appearance: none; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--hero-fg) 50%), linear-gradient(135deg, var(--hero-fg) 50%, transparent 50%); background-position: calc(100% - 20px) 55%, calc(100% - 15px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+  .sh-site-pick select:focus-visible { outline: 2px solid var(--hero-accent); outline-offset: 2px; }
+  .sh-site-pick option { color: #1d1d1b; background: #fff; }
+  .sh-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sh-site-logos { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 22px auto 0; max-width: 34rem; }
+  .sh-site-logos img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgba(245, 241, 232, 0.25); }
+  .sh-site-stamp { margin: 14px 0 0; font-size: 0.75rem; color: var(--hero-muted); }
   .sh-back { font: inherit; font-size: 0.85rem; color: var(--muted); background: none; border: 0; padding: 0 0 12px; cursor: pointer; }
   .sh-back:hover { color: var(--fg); }
   .sh-back:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
@@ -147,11 +157,24 @@
 <body>
 <div class="sh">
   <header class="sh-site" id="home-hero">
-    <p class="sh-kicker">Fantasy basketball · 2026–27</p>
-    <h1 class="sh-site-title">All Things Athletic <span class="sh-site-abbr">(ATA)</span> Season 6</h1>
-    <p class="sh-site-tag">The league's game-day guide: odds, lineups, pickups and trade ideas for all 12 teams.</p>
-    <div class="sh-site-logos" id="hero-logos" aria-hidden="true"></div>
-    <p class="sh-stamp" id="home-stamp"></p>
+    <svg class="sh-court" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="300" y1="0" x2="300" y2="300"/><circle cx="300" cy="150" r="48"/><circle cx="300" cy="150" r="14"/>
+        <path d="M0 40 H90 A110 110 0 0 1 90 260 H0"/><rect x="0" y="105" width="120" height="90"/>
+        <path d="M600 40 H510 A110 110 0 0 0 510 260 H600"/><rect x="480" y="105" width="120" height="90"/>
+      </g>
+    </svg>
+    <div class="sh-site-in">
+      <p class="sh-kicker">Fantasy basketball league · 2026–27</p>
+      <h1 class="sh-site-title"><span class="sh-site-line">All Things Athletic</span> <span class="sh-site-line"><span class="sh-site-abbr">(ATA)</span> Season 6</span></h1>
+      <p class="sh-site-tag">Odds, lineups, pickups and trade ideas for all 12 teams.</p>
+      <div class="sh-site-pick">
+        <label for="home-team" class="sh-sr">Choose a team</label>
+        <select id="home-team"><option value="" selected disabled>Choose a team…</option></select>
+      </div>
+      <div class="sh-site-logos" id="hero-logos" aria-hidden="true"></div>
+      <p class="sh-site-stamp" id="home-stamp"></p>
+    </div>
   </header>
 
   <header class="sh-teamhead">
@@ -431,6 +454,10 @@
     if (nav && nav.getBoundingClientRect().top <= 1) window.scrollTo({ top: nav.offsetTop - 8 });
   });
   sel.addEventListener('change', () => { team = sel.value; render(team); show(page); writeUrl(); });
+  // Home picker starts empty; choosing a team opens its Overview
+  const hp = $('home-team');
+  for (const k of order) hp.append(new Option(TEAMS[k].team + ' (' + TEAMS[k].record + ')', k));
+  hp.addEventListener('change', () => { if (!hp.value) return; team = hp.value; render(team); show('overview'); writeUrl(); window.scrollTo({ top: 0 }); hp.value = ''; });
   $('go-home').addEventListener('click', () => { show('home'); writeUrl(); window.scrollTo({ top: 0 }); });
   window.addEventListener('hashchange', () => { show(location.hash.slice(1)); });
   render(team);
