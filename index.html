@@ -87,6 +87,18 @@
   .sh-bar-fill.good { background: var(--ok); }
   .sh-bar-fill.bad { background: var(--bad); }
   .sh-bar-rank { color: var(--muted); text-align: right; }
+  .sh-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 12px; }
+  .sh-stat { background: var(--panel); border-radius: 12px; padding: 14px 16px; }
+  .sh-stat-label { margin: 0; color: var(--muted); font-size: 0.8rem; }
+  .sh-stat-big { margin: 2px 0 0; font-size: 1.9rem; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .sh-stat-big.good { color: var(--ok); } .sh-stat-big.bad { color: var(--bad); }
+  .sh-stat-sub { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .sh-more > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 8px 0; border-top: 1px solid var(--line); }
+  .sh-more[open] > summary { margin-bottom: 20px; }
+  .sh-lock { color: var(--muted); font-size: 0.75rem; }
+  #lineup td { vertical-align: top; }
+  #lineup td.sh-wrap { min-width: 0; }
+  .sh-quote-line { font-family: var(--serif); font-size: 0.95rem; margin: 0; }
   .sh-foot { font-size: 0.8rem; color: var(--muted); }
   .sh-foot summary { cursor: pointer; }
   .sh-foot ul { margin: 6px 0 0; padding-left: 1.2rem; display: grid; gap: 4px; }
@@ -110,85 +122,81 @@
   </header>
 
   <nav class="sh-tabs" aria-label="Pages">
-    <button type="button" data-page="today" aria-selected="true">Today</button>
-    <button type="button" data-page="week" aria-selected="false">This week</button>
-    <button type="button" data-page="ahead" aria-selected="false">Ahead</button>
+    <button type="button" data-page="overview" aria-selected="true">Overview</button>
+    <button type="button" data-page="matchup" aria-selected="false">Matchup</button>
     <button type="button" data-page="roster" aria-selected="false">Roster</button>
     <button type="button" data-page="waivers" aria-selected="false">Waivers</button>
     <button type="button" data-page="trades" aria-selected="false">Trades</button>
-    <button type="button" data-page="league" aria-selected="false">League</button>
-    <button type="button" data-page="news" aria-selected="false">News</button>
   </nav>
 
-  <section class="sh-page" id="today">
-    <figure class="sh-quote" id="quote"></figure>
-    <div class="sh-card"><h2>Before the next lock</h2><dl class="sh-today" id="today-list"></dl></div>
-    <div class="sh-card"><h2>Moves due</h2><p class="sh-note">Suggestions for this team. Tap a move for the reasoning. Trades are on the Trades page.</p><div class="sh-moves" id="moves-due"></div></div>
-    <div class="sh-card"><h2>Injury check</h2><dl class="sh-today" id="injuries"></dl></div>
+  <section class="sh-page" id="p-overview">
+    <div class="sh-hero" id="hero"></div>
+    <div class="sh-card"><h2>To do</h2><dl class="sh-today" id="today-list"></dl></div>
+    <div class="sh-card"><h2>Standings</h2>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>#</th><th class="sh-l">Team</th><th>W-L-T</th><th>Cat %</th></tr></thead><tbody id="standings"></tbody></table></div></div>
+    <div class="sh-card"><h2>News</h2><p class="sh-note">Tap a headline for the take.</p><div class="sh-moves" id="news-list"></div></div>
+    <details class="sh-more">
+      <summary>League details</summary>
+      <div class="sh-page">
+        <div class="sh-card"><h2>Roster strength</h2><p class="sh-note">Where this team's current roster ranks per 36 minutes played (longer is better).</p><div class="sh-bars" id="pm-bars"></div></div>
+        <div class="sh-card"><h2>Category ranks</h2><p class="sh-note">Season to date. 1 is best; green is top 3, red is bottom 3.</p>
+          <div class="sh-box"><table class="sh-table"><thead><tr><th>Team</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead><tbody id="ranks"></tbody></table></div></div>
+      </div>
+    </details>
   </section>
 
-  <section class="sh-page" id="week" hidden>
-    <div class="sh-card"><h2>This week's matchup</h2><dl class="sh-today" id="matchnotes"></dl></div>
-    <div class="sh-card"><h2>Category odds</h2><p class="sh-note">Proj = projected totals for the week. Win % comes from simulated weeks. A team needs 5 of 9.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Cat</th><th class="sh-l">Outlook</th><th>Team now</th><th>Opp now</th><th>Team proj</th><th>Opp proj</th><th>Win %</th></tr></thead><tbody id="matchup"></tbody></table></div></div>
-    <div class="sh-card"><h2>Day by day</h2><p class="sh-note">Players with a game and empty slots (10 starters) for both teams. Edge = this team's counted games minus the opponent's.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Day</th><th>Lock (MYT)</th><th>Team play</th><th>Team open</th><th>Opp play</th><th>Opp open</th><th>Edge</th></tr></thead><tbody id="daygrid"></tbody></table></div></div>
-    <div class="sh-card"><h2>Lineup plan</h2><p class="sh-note">Set it in ESPN before each lock (the day's first tip-off, Malaysia time).</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Day</th><th>Locks</th><th>Open</th><th class="sh-l">Start</th><th class="sh-l">Note</th></tr></thead><tbody id="lineup"></tbody></table></div></div>
-    <div class="sh-grid2">
-      <div class="sh-card"><h2>Opponent outlook</h2><p class="sh-note">What the opponent will likely do, and how to answer it.</p><div class="sh-moves" id="opponent"></div></div>
-      <div class="sh-card"><h2>Strategy</h2><dl class="sh-today" id="strategy"></dl></div>
-    </div>
+  <section class="sh-page" id="p-matchup" hidden>
+    <div class="sh-card"><h2 id="week-title">This week</h2><p class="sh-note" id="week-note"></p>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>Cat</th><th>Team</th><th>Opp</th><th>Win %</th></tr></thead><tbody id="matchup-body"></tbody></table></div></div>
+    <div class="sh-card"><h2>Lineup by day</h2><p class="sh-note">Each day locks at its first tip-off (Malaysia time).</p>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>Day</th><th class="sh-l">Start</th></tr></thead><tbody id="lineup"></tbody></table></div></div>
+    <details class="sh-more">
+      <summary>More details</summary>
+      <div class="sh-page">
+        <div class="sh-card"><h2>Projected totals</h2>
+          <div class="sh-box"><table class="sh-table"><thead><tr><th>Cat</th><th>Team now</th><th>Opp now</th><th>Team proj</th><th>Opp proj</th></tr></thead><tbody id="matchup-full"></tbody></table></div></div>
+        <div class="sh-card"><h2>Open lineup slots</h2><p class="sh-note">Players with a game each day, out of 10 starting spots.</p>
+          <div class="sh-box"><table class="sh-table"><thead><tr><th>Day</th><th>Team play</th><th>Team open</th><th>Opp play</th><th>Opp open</th></tr></thead><tbody id="daygrid"></tbody></table></div></div>
+        <div class="sh-card"><h2 id="nextweek-title">Next week</h2><p class="sh-note" id="nextweek-note"></p>
+          <div class="sh-box"><table class="sh-table"><thead><tr><th>Cat</th><th>Team proj</th><th>Opp proj</th><th>Win %</th></tr></thead><tbody id="nextweek"></tbody></table></div></div>
+        <div class="sh-card"><h2>Coming up</h2>
+          <div class="sh-box"><table class="sh-table"><thead><tr><th>Week</th><th class="sh-l">Opponent</th><th>Win %</th></tr></thead><tbody id="outlook"></tbody></table></div></div>
+      </div>
+    </details>
   </section>
 
-  <section class="sh-page" id="ahead" hidden>
-    <div class="sh-card"><h2>Season outlook</h2><p class="sh-note">The next five opponents with the current roster. Weeks 7–8 get win chances once the NBA schedule is final.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Wk</th><th class="sh-l">Dates</th><th class="sh-l">Opponent</th><th>Record</th><th>Team G</th><th>Opp G</th><th>Win %</th><th class="sh-l">Team wins</th><th class="sh-l">They win</th><th class="sh-l">Note</th></tr></thead><tbody id="outlook"></tbody></table></div></div>
-    <div class="sh-card"><h2 id="nextweek-title">Next week forecast</h2><p class="sh-note" id="nextweek-note"></p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Cat</th><th class="sh-l">Outlook</th><th>Team proj</th><th>Opp proj</th><th>Win %</th></tr></thead><tbody id="nextweek"></tbody></table></div></div>
-    <div class="sh-card"><h2>Games per week</h2><p class="sh-note">Each player's NBA games in each matchup week. Green = 4 games, red = 2 or fewer.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th>Team</th><th>Wk 4</th><th>Wk 5</th><th>Wk 6</th></tr></thead><tbody id="schedgrid"></tbody></table></div></div>
+  <section class="sh-page" id="p-roster" hidden>
+    <div class="sh-card"><h2>Roster</h2><p class="sh-note">Season per-game stats. Value = how much a player helps per game in this team's build (0 is average). ▲ ▼ = trending up or down over the last 15 days.</p>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th>Min</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>3PM</th><th>FG%</th><th>FT%</th><th>Value</th></tr></thead><tbody id="roster-body"></tbody></table></div></div>
+    <div class="sh-card"><h2>Injuries</h2><dl class="sh-today" id="injuries"></dl></div>
+    <div class="sh-card"><h2>Games per week</h2><p class="sh-note">Green = 4 games, red = 2 or fewer.</p>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th class="sh-c" id="gw0">This wk</th><th class="sh-c" id="gw1">Next</th><th class="sh-c" id="gw2">After</th></tr></thead><tbody id="schedgrid"></tbody></table></div></div>
   </section>
 
-  <section class="sh-page" id="roster" hidden>
-    <div class="sh-card"><h2>Roster</h2><p class="sh-note">This season's per-game stats (ESPN). Value = value per game in this team's build (see Strategy). L15 = value over the last 15 days (▲ up, ▼ down by 1+). Min L7 = minutes over the last 7 days.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th>Pos</th><th>GP</th><th>Min</th><th>Min L7</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>3PM</th><th>FG%</th><th>FT%</th><th>BLK</th><th>TO</th><th>Value</th><th>L15</th><th class="sh-l">Note</th></tr></thead><tbody id="roster-body"></tbody></table></div></div>
+  <section class="sh-page" id="p-waivers" hidden>
+    <div class="sh-card"><h2>Summary</h2><dl class="sh-today" id="waiver-summary"></dl></div>
+    <div class="sh-card"><h2>Suggested moves</h2><p class="sh-note">Tap a move for the reasoning.</p><div class="sh-moves" id="moves-due"></div></div>
+    <div class="sh-card"><h2>Best free agents</h2><p class="sh-note">This season's stats, 21+ minutes. Plays = games left this week.</p>
+      <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th class="sh-l">Plays</th><th>Min</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th><th>Value</th></tr></thead><tbody id="waivers-body"></tbody></table></div></div>
   </section>
 
-  <section class="sh-page" id="waivers" hidden>
-    <div class="sh-card"><h2>Best pickups this week</h2><p class="sh-note">This season's stats only, 21+ minutes, not injured, scored for this team's build. Open G = games on days this team has an empty lineup slot. Waivers need a claim.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Player</th><th>Team</th><th class="sh-l">Status</th><th class="sh-l">Plays</th><th>Open G</th><th>Min</th><th>Min L7</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>3PM</th><th>FG%</th><th>FT%</th><th>Value</th><th class="sh-l">Note</th></tr></thead><tbody id="waivers-body"></tbody></table></div></div>
-  </section>
-
-  <section class="sh-page" id="trades" hidden>
+  <section class="sh-page" id="p-trades" hidden>
     <div class="sh-card"><h2>Trade ideas</h2><p class="sh-note">Ideas from the numbers. Tap for details.</p><div class="sh-moves" id="moves-trade"></div></div>
-    <div class="sh-card"><h2>Who needs what</h2><p class="sh-note">They need = categories where this team is strong and they're weak. They spare = categories this team needs where they're strong. Good fit = both.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Team</th><th>Record</th><th class="sh-l">Fit</th><th class="sh-l">They need</th><th class="sh-l">They spare</th><th class="sh-l">Strong</th><th class="sh-l">Weak</th></tr></thead><tbody id="profiles"></tbody></table></div></div>
+    <details class="sh-more">
+      <summary>Trade fit with each team</summary>
+      <div class="sh-page">
+        <div class="sh-card"><p class="sh-note">They need = this team's strong categories where they're weak. They spare = categories this team needs where they're strong.</p>
+          <div class="sh-box"><table class="sh-table"><thead><tr><th>Team</th><th class="sh-l">Fit</th><th class="sh-l">They need</th><th class="sh-l">They spare</th></tr></thead><tbody id="profiles"></tbody></table></div></div>
+      </div>
+    </details>
   </section>
 
-  <section class="sh-page" id="league" hidden>
-    <div class="sh-card"><h2>Standings</h2><p class="sh-note">Weeks 1–2 final. Category record includes the current week so far.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>#</th><th class="sh-l">Team</th><th>W-L-T</th><th>Cats</th><th>Cat %</th><th>Adds</th><th>Trades</th></tr></thead><tbody id="standings"></tbody></table></div></div>
-    <div class="sh-card"><h2>Category ranks</h2><p class="sh-note">Season to date, from each team's actual matchup totals. 1 is best; green is top 3, red is bottom 3.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Team</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead><tbody id="ranks"></tbody></table></div></div>
-    <div class="sh-card"><h2>Category totals</h2><p class="sh-note">The numbers behind the ranks. Lower is better for TO. Colors match the ranks.</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Team</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead><tbody id="teamstats"></tbody></table></div></div>
-    <div class="sh-card"><h2>Per 36 minutes</h2><p class="sh-note">Each team's current roster, season stats per 36 minutes played. This removes the effect of games played and streaming, so it shows how strong each roster is per minute. The bars show where the selected team ranks (longer is better).</p>
-      <div class="sh-bars" id="pm-bars"></div>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>Team</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead><tbody id="perminute"></tbody></table></div></div>
-    <div class="sh-card"><h2>Recent moves around the league</h2><p class="sh-note">Adds and drops, newest first (day/month, Malaysia time).</p>
-      <div class="sh-box"><table class="sh-table"><thead><tr><th>When</th><th class="sh-l">Team</th><th class="sh-l">Added</th><th class="sh-l">Dropped</th><th class="sh-l">Type</th></tr></thead><tbody id="txns"></tbody></table></div></div>
-  </section>
-
-  <section class="sh-page" id="news" hidden>
-    <div class="sh-card"><h2>News and takes</h2><p class="sh-note">What Locked On Fantasy Basketball and the injury reports say about this team's players, and whether the numbers back it up.</p><div class="sh-moves" id="news-list"></div></div>
-  </section>
-
+  <p class="sh-foot sh-quote-line" id="quote"></p>
   <details class="sh-foot">
     <summary>How this works</summary>
     <ul>
       <li>Each team's build is Claude's read of its roster: categories where it ranks 10th or worse are treated as punts. The real managers' plans may differ.</li>
-      <li>Projections blend this season's stats with ESPN projections. Win chances come from simulating each week thousands of times.</li>
+      <li>Win chances come from simulating each week thousands of times with this season's stats.</li>
       <li>Pickups must play 21+ minutes this season; free agents are preferred over waiver claims. Each team gets 4 adds a week.</li>
       <li>Locks are at each day's first tip-off, usually about 8 AM Malaysia time.</li>
       <li>Sources: ESPN league data, Locked On Fantasy Basketball. Prepared by Claude; numbers are a snapshot from the time shown at the top.</li>
@@ -211,7 +219,7 @@
   const f1 = (v) => blank(v) ? '—' : Number(v).toFixed(1);
   const f3 = (v) => blank(v) ? '—' : Number(v).toFixed(3).replace(/^0/, '');
   const sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
-  const num = (v) => Number(v) < 1 && Number(v) > 0 ? f3(v) : Number(v).toLocaleString('en');
+  const num = (v) => blank(v) ? '—' : Number(v) < 1 && Number(v) > 0 ? f3(v) : Number(v).toLocaleString('en');
   const tint = (c, good, a) => { c.style.background = `color-mix(in srgb, var(${good ? '--ok' : '--bad'}) ${a || 28}%, transparent)`; };
   const pill = (text) => { const c = el('td', undefined, 'sh-l'); c.append(el('span', text, 'sh-pill p-' + String(text).replace(/[^A-Za-z]/g, ''))); return c; };
   const valueCell = (v) => { if (blank(v)) return td('—'); const c = td(sgn(Number(v)), 'sh-v'); const x = Number(v) / 2; if (x) tint(c, x > 0, Math.round(Math.min(Math.abs(x), 3) / 3 * 45)); return c; };
@@ -224,22 +232,24 @@
   const order = sortRows(L.standings).map((s) => Object.keys(TEAMS).find((k) => TEAMS[k].team === s.team)).filter(Boolean);
   for (const k of Object.keys(TEAMS)) if (!order.includes(k)) order.push(k);
   const sel = $('team');
-  sel.replaceChildren(...order.map((k) => { const o = new Option(TEAMS[k].team + ' (' + TEAMS[k].record + ')', k); return o; }));
+  sel.replaceChildren(...order.map((k) => new Option(TEAMS[k].team + ' (' + TEAMS[k].record + ')', k)));
 
-  // League-wide parts (same for every team)
+  // Quote of the week: one line at the bottom
   const q = (L.quote || [])[0];
-  if (q) $('quote').replaceChildren(el('blockquote', '“' + q.quote + '”'), el('figcaption', '— ' + q.player + ' · quote of the week')); else $('quote').hidden = true;
+  const qText = q && (q.quote || q.text), qBy = q && (q.player || q.by);
+  if (qText) $('quote').textContent = '“' + qText + '” — ' + qBy; else $('quote').hidden = true;
 
   const CATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'TO', 'FG%', 'FT%'];
-  const rankMap = {}; for (const r of L.ranks || []) rankMap[r.team] = r;
   const rankTint = (c, k) => { if (k && k <= 3) tint(c, true); else if (k >= 10) tint(c, false); };
-
-  const dl = (id, list, label, text, plain) => fill(id, list.map((r) => { const d = el('div'); d.append(el('dt', r[label]), el('dd', text(r), plain ? 'sh-plain' : '')); return d; }));
+  const dl = (id, list, label, text, plain, empty) => fill(id, list.map((r) => { const d = el('div'); d.append(el('dt', r[label]), el('dd', text(r), plain ? 'sh-plain' : '')); return d; }), empty);
   const details = (id, list, chip, prefix, title, body, empty) => fill(id, list.map((m) => {
     const det = el('details'); const s = el('summary'); s.append(el('span', m[chip], 'sh-chip ' + prefix + m[chip]), el('span', m[title]));
     det.append(s, el('p', body(m))); return det;
   }), empty);
-  const winCell = (r) => { const w = Number(r.win_pct); return td(w + '%', 'sh-v ' + (r.plan === 'Punt' ? '' : w >= 60 ? 'sh-up' : w <= 40 ? 'sh-down' : '')); };
+  const winCell = (r) => { const w = Number(r.win_pct); return td(blank(r.win_pct) ? '—' : w + '%', 'sh-v ' + (r.plan === 'Punt' || blank(r.win_pct) ? '' : w >= 60 ? 'sh-up' : w <= 40 ? 'sh-down' : '')); };
+  const scoreOf = (T) => { const m = (sortRows(T.matchnotes).map((r) => r.text).join(' ') + ' ' + sortRows(T.today).map((r) => r.text).join(' ')).match(/Score so far: (\d+)[–-](\d+)[–-](\d+)/); return m ? m[1] + '–' + m[2] + (m[3] !== '0' ? '–' + m[3] : '') : null; };
+  const stat = (label, big, sub, cls) => { const d = el('div', undefined, 'sh-stat'); d.append(el('p', label, 'sh-stat-label'), el('p', big, 'sh-stat-big' + (cls ? ' ' + cls : ''))); if (sub) d.append(el('p', sub, 'sh-stat-sub')); return d; };
+  const pctCls = (w) => blank(w) ? '' : w >= 60 ? 'good' : w <= 40 ? 'bad' : '';
 
   const render = (key) => {
     const T = TEAMS[key]; if (!T) return;
@@ -247,74 +257,77 @@
     document.title = name + ' · ATA Season 6 Advisor';
     $('team-name').textContent = name;
     $('mono').textContent = initials(name);
-    $('team-sub').textContent = 'ATA Season 6 Advisor · ' + T.record + ' · ' + (T.punts && T.punts.length ? 'punt ' + T.punts.join(' and ') : 'balanced build') + ' (Claude\'s read of the roster)';
+    $('team-sub').textContent = T.record + ' · ' + (T.punts && T.punts.length ? 'punting ' + T.punts.join(' and ') : 'balanced build');
     sel.value = key;
 
+    // Overview
+    const out = sortRows(T.outlook); const now = out[0] || {}, next = out[1] || {};
+    const score = scoreOf(T);
+    fill('hero', [
+      stat('This week' + (now.week ? ' (week ' + now.week + ')' : ''), blank(now.win_pct) ? '—' : now.win_pct + '% to win', 'vs ' + (now.opponent || '—') + (score ? ' · score ' + score : ''), pctCls(now.win_pct)),
+      stat('Next week' + (next.week ? ' (week ' + next.week + ')' : ''), blank(next.win_pct) ? '—' : next.win_pct + '% to win', 'vs ' + (next.opponent || '—') + (next.dates ? ' · ' + next.dates : ''), pctCls(next.win_pct)),
+    ]);
     dl('today-list', sortRows(T.today), 'label', (r) => r.text);
-    dl('injuries', sortRows(T.injuries), 'status', (r) => r.player + ': ' + r.note, true);
-    dl('matchnotes', sortRows(T.matchnotes), 'label', (r) => r.text, true);
-    dl('strategy', sortRows(T.strategy), 'label', (r) => r.text, true);
-    details('moves-due', sortRows(T.moves).filter((m) => m.kind !== 'Trade'), 'kind', 'k-', 'move', (m) => m.why, 'No moves needed right now.');
-    details('moves-trade', sortRows(T.moves).filter((m) => m.kind === 'Trade'), 'kind', 'k-', 'move', (m) => m.why, 'No trade ideas this week.');
-    details('opponent', sortRows(T.opponent), 'kind', 'k-', 'label', (m) => m.text);
-    details('news-list', sortRows(T.news), 'verdict', 'v-', 'headline', (n) => n.take + ' (' + n.source + ')');
-
-    fill('matchup', sortRows(T.matchup).map((r) => { const tr = el('tr'); if (r.plan === 'Punt') tr.className = 'sh-punt'; tr.append(td(r.category), pill(r.plan), td(num(r.you_now)), td(num(r.opp_now)), td(num(r.you_proj)), td(num(r.opp_proj)), winCell(r)); return tr; }));
-    fill('nextweek', sortRows(T.nextweek).map((r) => { const tr = el('tr'); if (r.plan === 'Punt') tr.className = 'sh-punt'; tr.append(td(r.category), pill(r.plan), td(num(r.you_proj)), td(num(r.opp_proj)), winCell(r)); return tr; }));
-    $('nextweek-title').textContent = T.nextweek_title || 'Next week forecast';
-    $('nextweek-note').textContent = T.nextweek_note || '';
-
-    fill('daygrid', sortRows(T.daygrid).map((r) => {
-      const tr = el('tr'); const e = Number(r.edge);
-      tr.append(td(r.day), td(r.lock_myt), td(r.you_games), td(r.you_open, Number(r.you_open) >= 4 ? 'sh-up' : ''), td(r.opp_games), td(r.opp_open, Number(r.opp_open) >= 4 ? 'sh-down' : ''), td(e > 0 ? '+' + e : e, e > 0 ? 'sh-up' : e < 0 ? 'sh-down' : 'sh-muted')); return tr;
-    }));
-    fill('lineup', sortRows(T.lineup).map((r) => { const tr = el('tr'); tr.append(td(r.day), td(r.lock_myt), td(r.open_slots, Number(r.open_slots) >= 4 ? 'sh-up' : ''), td(r.lineup, 'sh-l sh-wrap'), td(r.sit, 'sh-l sh-wrap')); return tr; }));
-    fill('outlook', sortRows(T.outlook).map((r) => {
-      const tr = el('tr'); const has = !blank(r.win_pct); const w = Number(r.win_pct);
-      tr.append(td(r.week), td(r.dates, 'sh-l'), td(r.opponent, 'sh-l'), td(r.record), td(r.your_games), td(r.opp_games), td(has ? w + '%' : '—', 'sh-v ' + (!has ? 'sh-muted' : w >= 60 ? 'sh-up' : w <= 40 ? 'sh-down' : '')), td(r.you_win, 'sh-l'), td(r.they_win, 'sh-l'), td(r.note, 'sh-l sh-wrap')); return tr;
-    }));
-
-    const roster = sortRows(T.roster);
-    const tot = { g_wk4: 0, g_wk5: 0, g_wk6: 0 };
-    const sg = roster.map((p) => { const tr = el('tr'); tr.append(td(p.player), td(p.nba)); for (const k of ['g_wk4', 'g_wk5', 'g_wk6']) { const g = Number(p[k]); tot[k] += g; const c = td(g, 'sh-c'); if (g >= 4) tint(c, true); else if (g <= 2) tint(c, false); tr.append(c); } return tr; });
-    const tr0 = el('tr'); tr0.className = 'sh-group'; tr0.append(td('Total games'), td(''), td(tot.g_wk4, 'sh-c'), td(tot.g_wk5, 'sh-c'), td(tot.g_wk6, 'sh-c'));
-    fill('schedgrid', [...sg, tr0]);
-    fill('roster-body', roster.map((p) => {
-      const tr = el('tr'); const ml7 = td(f1(p.min_l7)); const dm = Number(p.min_l7) - Number(p.min); if (!blank(p.min_l7) && dm >= 3) ml7.className = 'sh-up'; else if (!blank(p.min_l7) && dm <= -3) ml7.className = 'sh-down';
-      const l15 = valueCell(p.value_l15); if (p.trend === 'up') l15.textContent += ' ▲'; else if (p.trend === 'down') l15.textContent += ' ▼';
-      tr.append(td(p.player + (p.inj ? ' (' + p.inj + ')' : '')), td(p.pos), td(p.gp), td(f1(p.min)), ml7, td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.stl)), td(f1(p.tpm)), td(f3(p.fg)), td(f3(p.ft)), td(f1(p.blk), 'sh-muted'), td(f1(p.to), 'sh-muted'), valueCell(p.value), l15, td(p.note, 'sh-l sh-muted')); return tr;
-    }));
-    fill('waivers-body', sortRows(T.waivers).map((p) => {
-      const tr = el('tr'); tr.append(td(p.player), td(p.nba), td(p.status, 'sh-l' + (p.status === 'Waivers' ? ' sh-muted' : '')), td(p.days, 'sh-l'), td(p.open_games, Number(p.open_games) >= 3 ? 'sh-up' : ''), td(f1(p.min)), td(f1(p.min_l7), !blank(p.min_l7) && Number(p.min_l7) < 21 ? 'sh-down' : ''), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.stl)), td(f1(p.tpm)), td(f3(p.fg)), td(f3(p.ft)), valueCell(p.value), td(p.note, 'sh-l sh-muted')); return tr;
-    }));
-    fill('profiles', sortRows(T.profiles).map((r) => { const tr = el('tr'); tr.append(td(r.team), td(r.record), pill(r.fit), td(r.they_need, 'sh-l'), td(r.they_spare, 'sh-l'), td(r.strong, 'sh-l sh-muted'), td(r.weak, 'sh-l sh-muted')); return tr; }));
-
-    // League tables highlight the selected team
-    fill('standings', sortRows(L.standings).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.order), td(r.team, 'sh-l'), td(r.record), td(r.cats), td(r.cat_pct + '%'), td(r.adds), td(r.trades)); return tr; }));
-    fill('ranks', sortRows(L.ranks).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.team)); for (const c of CATS) { const k = Number(r[c]); const x = td(k, 'sh-c'); rankTint(x, k); tr.append(x); } return tr; }));
-    fill('teamstats', sortRows(L.teamstats).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.team)); for (const c of CATS) { const v = Number(r[c]); const x = td(c.endsWith('%') ? f3(v) : v.toLocaleString('en'), 'sh-c'); const k = rankMap[r.team] ? Number(rankMap[r.team][c]) : 0; rankTint(x, k); if (k) x.title = 'Rank ' + k; tr.append(x); } return tr; }));
-    const pm = sortRows(L.perminute);
-    fill('perminute', pm.map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.team)); for (const c of CATS) { const v = Number(r[c]); const x = td(c.endsWith('%') ? f3(v) : v.toFixed(1), 'sh-c'); const k = Number(r['r_' + c]); rankTint(x, k); if (k) x.title = 'Rank ' + k; tr.append(x); } return tr; }));
-    const me = pm.find((r) => r.team === name);
+    fill('standings', sortRows(L.standings).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.order), td(r.team, 'sh-l'), td(r.record), td(r.cat_pct + '%')); return tr; }));
+    details('news-list', sortRows(T.news), 'verdict', 'v-', 'headline', (n) => n.take + ' (' + n.source + ')', 'No news for this team.');
+    const pm = sortRows(L.perminute); const me = pm.find((r) => r.team === name);
     const ord = (k) => k + (k % 10 === 1 && k !== 11 ? 'st' : k % 10 === 2 && k !== 12 ? 'nd' : k % 10 === 3 && k !== 13 ? 'rd' : 'th');
     fill('pm-bars', me ? CATS.map((c) => {
       const k = Number(me['r_' + c]); const n = pm.length || 12;
-      const row = el('div', undefined, 'sh-bar'); const track = el('div', undefined, 'sh-bar-track'); const fillEl = el('div', undefined, 'sh-bar-fill' + (k <= 3 ? ' good' : k >= n - 2 ? ' bad' : ''));
-      fillEl.style.width = Math.round(100 * (n - k + 1) / n) + '%'; track.append(fillEl);
-      row.append(el('span', c), track, el('span', ord(k), 'sh-bar-rank')); return row;
+      const row = el('div', undefined, 'sh-bar'); const track = el('div', undefined, 'sh-bar-track'); const f = el('div', undefined, 'sh-bar-fill' + (k <= 3 ? ' good' : k >= n - 2 ? ' bad' : ''));
+      f.style.width = Math.round(100 * (n - k + 1) / n) + '%'; track.append(f); row.append(el('span', c), track, el('span', ord(k), 'sh-bar-rank')); return row;
     }) : []);
-    fill('txns', sortRows(L.txns).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.when), td(r.team, 'sh-l'), td(r.added, 'sh-l'), td(r.dropped, 'sh-l sh-muted'), td(r.type, 'sh-l sh-muted')); return tr; }));
+    fill('ranks', sortRows(L.ranks).map((r) => { const tr = el('tr'); if (r.team === name) tr.className = 'sh-mine'; tr.append(td(r.team)); for (const c of CATS) { const k = Number(r[c]); const x = td(k, 'sh-c'); rankTint(x, k); tr.append(x); } return tr; }));
+
+    // Matchup
+    $('week-title').textContent = 'Week ' + (now.week || '') + ' vs ' + (now.opponent || '—');
+    $('week-note').textContent = [score ? 'Score so far ' + score + '.' : '', blank(now.win_pct) ? '' : 'About ' + now.win_pct + '% to win.', 'Team and Opp = totals so far. A team needs 5 of 9 categories.'].filter(Boolean).join(' ');
+    const mrows = sortRows(T.matchup);
+    fill('matchup-body', mrows.map((r) => { const tr = el('tr'); if (r.plan === 'Punt') tr.className = 'sh-punt'; tr.append(td(r.category + (r.plan === 'Punt' ? ' (punt)' : '')), td(num(r.you_now)), td(num(r.opp_now)), winCell(r)); return tr; }));
+    fill('matchup-full', mrows.map((r) => { const tr = el('tr'); if (r.plan === 'Punt') tr.className = 'sh-punt'; tr.append(td(r.category), td(num(r.you_now)), td(num(r.opp_now)), td(num(r.you_proj)), td(num(r.opp_proj))); return tr; }));
+    fill('lineup', sortRows(T.lineup).map((r) => { const tr = el('tr'); const played = r.lock_myt === 'Played'; if (played) tr.className = 'sh-punt'; const dc = td(String(r.day).replace(/^(\w{3}) \w{3} (\d+)$/, '$1 $2')); if (!played) dc.append(el('div', 'locks ' + r.lock_myt, 'sh-lock')); tr.append(dc, td(played ? 'Played' : (r.lineup + (Number(r.open_slots) ? ' · ' + r.open_slots + ' open' : '')), 'sh-l sh-wrap')); return tr; }));
+    fill('daygrid', sortRows(T.daygrid).map((r) => { const tr = el('tr'); tr.append(td(r.day), td(r.you_games), td(r.you_open, Number(r.you_open) >= 4 ? 'sh-up' : ''), td(r.opp_games), td(r.opp_open)); return tr; }));
+    $('nextweek-title').textContent = T.nextweek_title || 'Next week';
+    $('nextweek-note').textContent = T.nextweek_note || '';
+    fill('nextweek', sortRows(T.nextweek).map((r) => { const tr = el('tr'); if (r.plan === 'Punt') tr.className = 'sh-punt'; tr.append(td(r.category), td(num(r.you_proj)), td(num(r.opp_proj)), winCell(r)); return tr; }));
+    fill('outlook', out.map((r) => { const tr = el('tr'); tr.append(td(r.week), td(r.opponent + ' (' + r.dates + ')', 'sh-l'), winCell(r)); return tr; }));
+
+    // Roster
+    const roster = sortRows(T.roster);
+    fill('roster-body', roster.map((p) => {
+      const tr = el('tr'); const v = valueCell(p.value); if (p.trend === 'up') v.textContent += ' ▲'; else if (p.trend === 'down') v.textContent += ' ▼';
+      tr.append(td(p.player + (p.note === 'IR' ? ' (IR)' : p.inj ? ' (' + p.inj + ')' : '')), td(f1(p.min)), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.stl)), td(f1(p.tpm)), td(f3(p.fg)), td(f3(p.ft)), v); return tr;
+    }));
+    dl('injuries', sortRows(T.injuries), 'status', (r) => r.player + ': ' + r.note, true, 'Everyone is healthy.');
+    if (now.week) { $('gw0').textContent = 'Wk ' + now.week; $('gw1').textContent = 'Wk ' + (now.week + 1); $('gw2').textContent = 'Wk ' + (now.week + 2); }
+    const tot = [0, 0, 0];
+    const sg = roster.map((p) => { const tr = el('tr'); tr.append(td(p.player)); ['g_wk4', 'g_wk5', 'g_wk6'].forEach((k, i) => { const g = Number(p[k]); tot[i] += g; const c = td(g, 'sh-c'); if (g >= 4) tint(c, true); else if (g <= 2) tint(c, false); tr.append(c); }); return tr; });
+    const tr0 = el('tr'); tr0.className = 'sh-group'; tr0.append(td('Total games'), ...tot.map((t) => td(t, 'sh-c')));
+    fill('schedgrid', [...sg, tr0]);
+
+    // Waivers
+    const todays = sortRows(T.today);
+    const pick = (re) => todays.filter((r) => re.test(r.label));
+    dl('waiver-summary', [...pick(/^adds?$/i), ...pick(/do now|add|swap|stream/i).filter((r) => !/^adds?$/i.test(r.label))], 'label', (r) => r.text, false, 'No pickup suggested right now.');
+    details('moves-due', sortRows(T.moves).filter((m) => m.kind !== 'Trade'), 'kind', 'k-', 'move', (m) => m.why, 'No moves needed right now.');
+    fill('waivers-body', sortRows(T.waivers).map((p) => { const tr = el('tr'); tr.append(td(p.player + ' (' + p.nba + ')' + (p.status === 'Waivers' ? ' · waivers' : '')), td(p.days, 'sh-l'), td(f1(p.min)), td(f1(p.pts)), td(f1(p.reb)), td(f1(p.ast)), td(f1(p.tpm)), valueCell(p.value)); return tr; }));
+
+    // Trades
+    details('moves-trade', sortRows(T.moves).filter((m) => m.kind === 'Trade'), 'kind', 'k-', 'move', (m) => m.why, 'No trade ideas this week.');
+    fill('profiles', sortRows(T.profiles).map((r) => { const tr = el('tr'); tr.append(td(r.team), pill(r.fit), td(r.they_need, 'sh-l'), td(r.they_spare, 'sh-l')); return tr; }));
   };
 
-  // Pages (hash) and team (?team=) both live in the URL, so any view can be linked
-  const PAGES = ['today', 'week', 'ahead', 'roster', 'waivers', 'trades', 'league', 'news'];
-  let page = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'today';
+  // Page (hash) and team (?team=) live in the URL, so any view can be linked; old page names still work
+  const PAGES = ['overview', 'matchup', 'roster', 'waivers', 'trades'];
+  const OLD = { today: 'overview', news: 'overview', league: 'overview', week: 'matchup', ahead: 'matchup' };
+  const pageFrom = (h) => PAGES.includes(h) ? h : OLD[h] || 'overview';
+  let page = pageFrom(location.hash.slice(1));
   let team = new URLSearchParams(location.search).get('team');
   if (!TEAMS[team]) team = TEAMS[DEFAULT] ? DEFAULT : order[0];
   const writeUrl = () => history.replaceState(null, '', '?team=' + encodeURIComponent(team) + '#' + page);
   const show = (id) => {
-    page = PAGES.includes(id) ? id : 'today';
-    for (const s of document.querySelectorAll('.sh-page')) s.hidden = s.id !== page;
+    page = pageFrom(id);
+    for (const s of document.querySelectorAll('section.sh-page')) s.hidden = s.id !== 'p-' + page;
     for (const b of document.querySelectorAll('.sh-tabs button')) { const on = b.dataset.page === page; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   };
   const nav = document.querySelector('.sh-tabs');
@@ -323,10 +336,12 @@
     if (nav && nav.getBoundingClientRect().top <= 1) window.scrollTo({ top: nav.offsetTop - 8 });
   });
   sel.addEventListener('change', () => { team = sel.value; render(team); writeUrl(); });
-  window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+  window.addEventListener('hashchange', () => { show(location.hash.slice(1)); });
   render(team);
   show(page);
   writeUrl();
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.addEventListener('load', () => window.scrollTo(0, 0));
 })();
 </script>
 </body>
