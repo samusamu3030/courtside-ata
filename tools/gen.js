@@ -103,8 +103,44 @@ window.GEN = async function (opts = {}) {
   for (const t of d.teams) { PUN[t.id] = puntsOf(names[t.id]); R[t.id] = t.roster.entries.map((e) => { const p = e.playerPoolEntry.player; const s = line(p); return { n: p.fullName, pt: p.proTeamId, inj: p.injuryStatus, slot: e.lineupSlotId, s, v: val(s, PUN[t.id]), p: e.lineupSlotId === 13 && p.injuryStatus === 'OUT' ? 0 : (play[p.injuryStatus] ?? 0.5), raw: p }; }); }
   const oppOf = (id, w) => { const m = d.schedule.find((m) => m.matchupPeriodId == w && (m.home.teamId == id || m.away?.teamId == id)); return m.home.teamId == id ? m.away.teamId : m.home.teamId; };
 
+  // ---- trade search: production = best 10 per day over the next two weeks in each team's own build;
+  // acceptance = reputation (65% draft position, 35% current rank), second player in a package counted at 40%
+  const ADP = {}, NEUT = {}, L7MIN = {};
+  for (const t of d.teams) for (const e of t.roster.entries) { const p = e.playerPoolEntry.player; ADP[p.fullName] = p.ownership?.averageDraftPosition || 170; const s = split(p, '00' + SEASON), l7 = split(p, '01' + SEASON); NEUT[p.fullName] = s && s.gp ? val(s.a, []) : -9; L7MIN[p.fullName] = l7 && l7.gp ? l7.a[40] : null; }
+  const CR = {}; Object.keys(NEUT).sort((a, b) => NEUT[b] - NEUT[a]).forEach((n, i) => { CR[n] = i + 1; });
+  const pv = (n) => 1000 / (Math.exp(0.65 * Math.log(Math.max(1, ADP[n])) + 0.35 * Math.log(CR[n] || 250)) + 20);
+  const pkg = (ns) => { const v = ns.map(pv).sort((a, b) => b - a); return v[0] + (v[1] || 0) * 0.4; };
+  const TS = [WEEK + 1, WEEK + 2].filter((w) => WEEKS[w]).flatMap(SP);
+  const prod = (Rr) => { let t = 0; for (const sp of TS) { const v = []; for (const x of Rr) if (x.p > 0 && g[x.pt]?.[sp]) v.push(x.v * x.p); v.sort((a, b) => b - a); for (let i = 0; i < 10 && i < v.length; i++) t += v[i]; } return t; };
+  const after = (Rr, out, inn, tid) => { let r = [...Rr.filter((x) => !out.includes(x.n)), ...inn.map((x) => ({ ...x, slot: 0, v: val(x.s, PUN[tid]) }))]; const cut = [];
+    while (r.length > Rr.length) { const c = r.filter((x) => x.slot !== 13 && !inn.some((y) => y.n === x.n)).sort((a, b) => a.v - b.v)[0]; cut.push(c.n); r = r.filter((x) => x !== c); } return { r, cut }; };
+  const okT = (x) => x.slot !== 13 && x.inj !== 'OUT' && (x.s[40] || 0) >= 20;
+  const sgn1 = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
+  const tradeSearch = (A) => {
+    const mine = R[A], base = prod(mine), give = mine.filter(okT), best = [];
+    for (const t of d.teams) { const Bid = t.id; if (Bid === A) continue; const th = R[Bid], tb = prod(th), get = th.filter(okT); let top = null;
+      const shapes = []; for (const a of give) for (const b of get) shapes.push([[a], [b]]);
+      for (let i = 0; i < give.length; i++) for (let j = i + 1; j < give.length; j++) for (const b of get) shapes.push([[give[i], give[j]], [b]]);
+      for (const a of give) for (let i = 0; i < get.length; i++) for (let j = i + 1; j < get.length; j++) shapes.push([[a], [get[i], get[j]]]);
+      for (const [gv, gt] of shapes) {
+        const perceived = pkg(gv.map((x) => x.n)) / pkg(gt.map((x) => x.n)) - 1; if (perceived < 0.02 || perceived > 0.8) continue;
+        const ma = after(mine, gv.map((x) => x.n), gt, A); const ours = prod(ma.r) - base; if (ours < 0.03 * Math.abs(base) + 2) continue;
+        const ta = after(th, gt.map((x) => x.n), gv, Bid); const theirs = prod(ta.r) - tb; if (theirs < -0.015 * Math.abs(tb)) continue;
+        const score = ours / Math.abs(base) + 0.5 * Math.max(0, theirs / Math.abs(tb)) + 0.1 * Math.min(perceived, 0.3);
+        if (!top || score > top.score) top = { Bid, gv, gt, ours, theirs, perceived, score, cutMe: ma.cut, cutThem: ta.cut, mineAfter: ma.r, theirsAfter: ta.r, base, tb };
+      }
+      if (top) best.push(top);
+    }
+    return best.sort((a, b) => b.score - a.score).slice(0, 3);
+  };
+  const descP = (x) => { const s = x.s; const l7 = L7MIN[x.n]; return `${x.n} (${abbr[x.pt]}, ${f1(s[40])} min${l7 != null && Math.abs(l7 - s[40]) >= 3 ? `, ${f1(l7)} lately` : ''}: ${f1(s[0])} pts, ${f1(s[6])} reb, ${f1(s[3])} ast, ${f1(s[2])} stl, ${f1(s[17])} 3pm, ${pct(s[13], s[14])?.toFixed(3).replace(/^0/, '') ?? '—'} FG, ${pct(s[15], s[16])?.toFixed(3).replace(/^0/, '') ?? '—'} FT${x.inj !== 'ACTIVE' ? ', ' + x.inj.replace(/_/g, ' ').toLowerCase() : ''})`; };
+  const catDelta = (out, inn, punts) => { const sum = (L, k) => L.reduce((s, x) => s + (x.s[k] || 0), 0); const parts = [];
+    for (const [c, k] of [['PTS', 0], ['REB', 6], ['AST', 3], ['STL', 2], ['3PM', 17], ['BLK', 1], ['TO', 11]]) { if (punts.includes(c)) continue; const dlt = sum(inn, k) - sum(out, k); if (Math.abs(dlt) >= (c === 'STL' || c === 'BLK' ? 0.2 : 0.4)) parts.push(`${c} ${sgn1(dlt)}`); }
+    for (const c of ['FG%', 'FT%']) { if (punts.includes(c)) continue; const dlt = inn.reduce((s, x) => s + W[c](x.s), 0) - out.reduce((s, x) => s + W[c](x.s), 0); if (Math.abs(dlt) >= 0.3) parts.push(`${c} ${dlt > 0 ? 'better' : 'worse'}`); }
+    return parts.join(', ') || 'about the same in every category'; };
+
   const NEWS = opts.news || [];
-  const GEN = opts.generalNews || null;
+  const GEN = Array.isArray(opts.generalNews) ? opts.generalNews : opts.generalNews ? [opts.generalNews] : [];
   const checked = opts.checked || 'this update';
 
   const team = (id) => {
@@ -121,13 +157,13 @@ window.GEN = async function (opts = {}) {
     const lineup = s4.map((sp, i) => { const pl = me.filter((x) => g[x.pt]?.[sp] && x.p > 0).sort((a, b) => b.v - a.v); const st = pl.slice(0, 10), bn = pl.slice(10); return { day: DAYS[i], order: i + 1, lock_myt: sp < FROM ? "Played" : LOCK[i], open_slots: Math.max(0, 10 - pl.length), lineup: st.map((x) => short(x.n)).join(', ') || 'Nobody plays', sit: bn.length ? 'Bench ' + bn.map((x) => short(x.n)).join(', ') : (pl.length === 10 ? 'Exactly 10' : '') }; });
     const row = (x, extra) => { const p = x.raw; const s = split(p, '00' + SEASON), l7 = split(p, '01' + SEASON), l15 = split(p, '02' + SEASON); const a = s?.a || {}; const v = s && s.gp ? val(a, punts) : null, v15 = l15 && l15.gp ? val(l15.a, punts) : null;
       return { player: x.n, nba: abbr[x.pt], pos: pos(p), inj: x.inj === 'ACTIVE' ? '' : x.inj.replace(/_/g, ' ').toLowerCase(), gp: s?.gp || 0, min: f1(a[40]), min_l7: l7 && l7.gp ? f1(l7.a[40]) : null, pts: f1(a[0]), reb: f1(a[6]), ast: f1(a[3]), stl: f1(a[2]), blk: f1(a[1]), tpm: f1(a[17]), to: f1(a[11]), fg: pct(a[13], a[14]), ft: pct(a[15], a[16]), value: f1(v), value_l15: f1(v15), trend: v15 == null || v == null ? '' : (v15 - v >= 1 ? 'up' : v15 - v <= -1 ? 'down' : ''), ...extra }; };
-    const roster = me.map((x) => row(x, { g_wk4: wkG(x.pt, WEEK), g_wk5: wkG(x.pt, WEEK + 1), g_wk6: wkG(x.pt, WEEK + 2), note: x.slot === 13 ? 'IR' : (x.inj === 'OUT' ? 'Out' : '') })).sort((a, b) => (b.value ?? -99) - (a.value ?? -99)).map((r, i) => ({ ...r, order: i + 1 }));
+    const roster = me.map((x) => row(x, { pid: x.raw.id, g_wk4: wkG(x.pt, WEEK), g_wk5: wkG(x.pt, WEEK + 1), g_wk6: wkG(x.pt, WEEK + 2), note: x.slot === 13 ? 'IR' : (x.inj === 'OUT' ? 'Out' : '') })).sort((a, b) => (b.value ?? -99) - (a.value ?? -99)).map((r, i) => ({ ...r, order: i + 1 }));
     // pickups ranked by counted minutes in open slots, weighted by value
     const wv = fa.filter((p) => { const s = split(p.player, '00' + SEASON); const l7 = split(p.player, '01' + SEASON); const m = l7 && l7.gp ? l7.a[40] : s?.a?.[40]; return s && s.gp >= 3 && m >= 21 && ['ACTIVE', 'DAY_TO_DAY'].includes(p.player.injuryStatus); }).map((p) => {
       const x = { n: p.player.fullName, pt: p.player.proTeamId, inj: p.player.injuryStatus, raw: p.player }; const days = []; let open = 0; s4.forEach((sp, i) => { if (sp >= FROM && g[x.pt]?.[sp]) { days.push(DN[i]); if (cnt[i] < 10) open++; } });
-      const r = row(x, { status: p.status === 'FREEAGENT' ? 'Free agent' : 'Waivers', days: days.join(' '), open_games: open }); r.cmin = Math.round(open * (r.min_l7 ?? r.min)); return r; })
+      const r = row(x, { pid: p.player.id, status: p.status === 'FREEAGENT' ? 'Free agent' : 'Waivers', days: days.join(' '), open_games: open }); r.cmin = Math.round(open * (r.min_l7 ?? r.min)); return r; })
       .filter((r) => r.value != null).sort((a, b) => (b.value + 3) * b.open_games - (a.value + 3) * a.open_games).slice(0, 12)
-      .map((r, i) => ({ order: i + 1, player: r.player, nba: r.nba, pos: r.pos, min: r.min, min_l7: r.min_l7, pts: r.pts, reb: r.reb, ast: r.ast, stl: r.stl, tpm: r.tpm, fg: r.fg, ft: r.ft, value: r.value, status: r.status, days: r.days, open_games: r.open_games, note: (r.status === 'Waivers' ? 'Needs a claim. ' : '') + `${r.cmin} counted minutes` }));
+      .map((r, i) => ({ order: i + 1, player: r.player, pid: r.pid, nba: r.nba, pos: r.pos, min: r.min, min_l7: r.min_l7, pts: r.pts, reb: r.reb, ast: r.ast, stl: r.stl, tpm: r.tpm, fg: r.fg, ft: r.ft, value: r.value, status: r.status, days: r.days, open_games: r.open_games, note: (r.status === 'Waivers' ? 'Needs a claim. ' : '') + `${r.cmin} counted minutes` }));
     const tobj = d.teams.find((t) => t.id === id); const used = tobj.transactionCounter?.matchupAcquisitionTotals?.[String(WEEK)] || 0; const left = Math.max(0, 4 - used);
     const healthy = roster.filter((r) => !r.inj && r.note !== 'IR' && r.value != null); const worst = healthy.slice().sort((a, b) => a.value - b.value)[0];
     const bestFA = wv.find((w) => w.status === 'Free agent');
@@ -146,9 +182,29 @@ window.GEN = async function (opts = {}) {
       else moves.push({ kind: 'Lineup', move: `Bench ${x.n} while he's out`, why: `${x.n} is listed out, but both IR slots are taken (${onIR.map((y) => y.n).join(', ')}). Keep him on the bench on game days until he's back.` });
     });
     const irFull = onIR.length >= IR_SLOTS;
-    if (punts.length) { const pp = me.filter((x) => x.slot !== 13).map((x) => ({ x, w: punts.reduce((s, c) => s + W[c](x.s), 0) })).sort((a, b) => b.w - a.w)[0];
+    const deals = tradeSearch(id); const oNext = oppOf(id, WEEK + 1); const sNext = WEEKS[WEEK + 1] ? SP(WEEK + 1) : null;
+    const nextBase = sNext ? sim(me, R[oNext], sNext, 800).win : null;
+    deals.forEach((t) => {
+      const other = names[t.Bid], gvN = t.gv.map((x) => x.n), gtN = t.gt.map((x) => x.n);
+      const theirAfterForSim = oNext === t.Bid ? t.theirsAfter : R[oNext];
+      const nextAfter = sNext ? sim(t.mineAfter, theirAfterForSim, sNext, 800).win : null;
+      const ourPct = Math.round(100 * t.ours / Math.abs(t.base)), theirPct = Math.round(100 * t.theirs / Math.abs(t.tb));
+      const watch = [...t.gt].filter((x) => x.inj !== 'ACTIVE' || (L7MIN[x.n] != null && L7MIN[x.n] < x.s[40] - 3)).map((x) => x.inj !== 'ACTIVE' ? `${x.n} is ${x.inj.replace(/_/g, ' ').toLowerCase()}` : `${x.n}'s minutes are down lately (${f1(L7MIN[x.n])})`);
+      const lines = [
+        `You give: ${t.gv.map(descP).join(' and ')}.`,
+        `You get: ${t.gt.map(descP).join(' and ')}.`,
+        `Per game for you: ${catDelta(t.gv, t.gt, punts)}.`,
+        `Production over the next two weeks (best 10 players each day, in this team's build): ${ourPct >= 0 ? '+' : ''}${ourPct}% for you.` + (nextBase != null ? ` Next week vs ${names[oNext]}: ${nextBase}% → ${nextAfter}%.` : ''),
+        `Why ${other} might say yes: ` + (theirPct >= 0 ? `it helps them too (${theirPct >= 0 ? '+' : ''}${theirPct}% production in their build${PUN[t.Bid].length ? ', which punts ' + PUN[t.Bid].join(' and ') : ''})` : `their production barely changes (${theirPct}%)`) + `, and by draft position and current rank they get the bigger names (about +${Math.round(100 * t.perceived)}% in value). They'd get ${catDelta(t.gt, t.gv, PUN[t.Bid])}.`,
+        ...(t.cutMe.length ? [`Roster: you'd drop ${t.cutMe.join(', ')} to make room.`] : []),
+        ...(t.cutThem.length ? [`They'd need to drop ${t.cutThem.join(', ')}.`] : []),
+        ...(watch.length ? [`Watch: ${watch.join('; ')}.`] : []),
+      ];
+      moves.push({ kind: 'Trade', move: `${gvN.join(' + ')} for ${gtN.join(' + ')} (${other})`, why: lines.join(' '), detail: lines, team_with: other, gain_pct: ourPct, their_pct: theirPct, next_before: nextBase, next_after: nextAfter });
+    });
+    if (!deals.length && punts.length) { const pp = me.filter((x) => x.slot !== 13).map((x) => ({ x, w: punts.reduce((s, c) => s + W[c](x.s), 0) })).sort((a, b) => b.w - a.w)[0];
       if (pp && pp.w >= 1) moves.push({ kind: 'Trade', move: `Sell ${pp.x.n}'s ${punts.join(' and ')}`, why: `About ${pp.w.toFixed(1)} of his value per game comes from ${punts.join(' and ')}, which this build punts. A team that needs ${punts.join('/')} should value him more; ask for help in ${CAT.filter((c) => !punts.includes(c) && rk[CAT.indexOf(c)] >= 7).join(', ') || 'the weakest contested category'}.` }); }
-    const st2 = roster.find((r) => r.trend === 'up' && r.value >= 2); if (st2) moves.push({ kind: 'Trade', move: `Watch ${st2.player} as a sell-high piece`, why: `He's at ${st2.value_l15 > 0 ? '+' : ''}${st2.value_l15} over the last 15 days vs ${st2.value > 0 ? '+' : ''}${st2.value} for the season. If the run continues, his ESPN rank will rise and he becomes a strong trade chip.` });
+    const st2 = roster.find((r) => r.trend === 'up' && r.value >= 2); if (st2 && !deals.length) moves.push({ kind: 'Trade', move: `Watch ${st2.player} as a sell-high piece`, why: `He's at ${st2.value_l15 > 0 ? '+' : ''}${st2.value_l15} over the last 15 days vs ${st2.value > 0 ? '+' : ''}${st2.value} for the season. If the run continues, his ESPN rank will rise and he becomes a strong trade chip.` });
     moves.forEach((m, i) => { m.order = i + 1; m.id = 'm' + (i + 1); });
     const injured = me.filter((x) => x.inj !== 'ACTIVE');
     const injuries = [...injured.map((x, i) => ({ order: i + 1, player: x.n, status: x.inj === 'OUT' ? 'Out' : x.inj === 'DAY_TO_DAY' ? 'Day-to-day' : x.inj.replace(/_/g, ' ').toLowerCase(), note: x.slot === 13 ? 'On IR.' : (x.inj === 'OUT' ? (irFull ? 'Out; IR is full, so bench him on game days.' : 'Out, not on IR.') : 'Check before the lock.') })), { order: 99, player: 'Everyone else', status: 'Active', note: `No other players on ESPN's injury report (checked ${checked}).` }];
@@ -191,8 +247,31 @@ window.GEN = async function (opts = {}) {
     const profiles = d.teams.filter((t) => t.id !== id).map((t) => { const n2 = names[t.id]; const r2 = RANKS[n2]; const theyNeed = CAT.filter((c, i) => rk[i] <= 4 && r2[i] >= 8); const theySpare = CAT.filter((c, i) => !punts.includes(c) && rk[i] >= 7 && r2[i] <= 4);
       return { team: n2, record: rec(t.id), strong: CAT.filter((c, i) => r2[i] <= 3).join(', ') || '—', weak: CAT.filter((c, i) => r2[i] >= 10).join(', ') || '—', they_need: theyNeed.join(', ') || '—', they_spare: theySpare.join(', ') || '—', fit: theyNeed.length && theySpare.length ? 'Good' : theyNeed.length || theySpare.length ? 'Some' : 'Low' }; })
       .sort((a, b) => ({ Good: 0, Some: 1, Low: 2 }[a.fit] - { Good: 0, Some: 1, Low: 2 }[b.fit])).map((r, i) => ({ order: i + 1, ...r }));
-    const onTeam = new Set(me.map((x) => x.n)); const news = [...NEWS.filter((n) => n.p.some((p) => onTeam.has(p))), ...(GEN ? [GEN] : [])].map((n, i) => ({ order: i + 1, source: n.source, headline: n.headline, verdict: n.verdict, take: n.take }));
-    return { team: tn, slug: slug(tn), record: rec(id), punts, nextweek_title: `Forecast: week ${WEEK + 1} vs ${names[o5]} (${DATES[WEEK + 1] || ''}): about ${nw.win_pct ?? '—'}%`, nextweek_note: `Early forecast with the current roster. Likely wins: ${nextweek.filter((x) => x.plan === 'Likely').map((x) => x.category).join(', ') || 'none'}; likely losses: ${nextweek.filter((x) => x.plan === 'Unlikely').map((x) => x.category).join(', ') || 'none'}. Rosters will change; this refreshes each update.`,
+    // News: this team's players first, then league-wide items, 5 to 10 in all
+    const onTeam = new Set(me.map((x) => x.n)); const mineN = NEWS.filter((n) => (n.p || []).some((p) => onTeam.has(p)));
+    const pool = [...mineN, ...NEWS.filter((n) => !mineN.includes(n)), ...GEN];
+    const news = pool.slice(0, Math.max(5, Math.min(10, mineN.length + 6))).map((n, i) => ({ order: i + 1, source: n.source, headline: n.headline, verdict: n.verdict, take: n.take, detail: n.detail || '', yours: mineN.includes(n) }));
+    // Plain-language reasons for the win chances
+    const list = (a) => a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a.at(-1) : a[0] || '';
+    const restIdx = s4.map((sp, i) => sp >= FROM ? i : -1).filter((i) => i >= 0);
+    const gLeft = restIdx.reduce((s, i) => s + Math.min(10, cnt[i]), 0), oLeft = restIdx.reduce((s, i) => s + Math.min(10, ocnt[i]), 0);
+    const unlC = unl.filter((c) => !punts.includes(c));
+    const outKey = (Rr) => Rr.filter((x) => x.inj === 'OUT').sort((a, b) => b.v - a.v).slice(0, 2).map((x) => x.n);
+    const myOut = outKey(me), oppOut = outKey(om);
+    const why_now = [scoreTxt ? `${bMe.w > bMe.l ? 'Leading' : bMe.w < bMe.l ? 'Trailing' : 'Tied'} ${bMe.w}–${bMe.l}${bMe.t ? '–' + bMe.t : ''}.` : '',
+      likely.length ? `Likely wins: ${list(likely)}.` : 'No safe categories yet.',
+      unlC.length ? `Likely losses: ${list(unlC)}.` : '',
+      toss.length ? `Coin flips: ${list(toss)}.` : '',
+      restIdx.length ? `${gLeft} player-games left vs their ${oLeft}.` : '',
+      myOut.length ? `Out: ${list(myOut)}.` : ''].filter(Boolean).join(' ');
+    const nxC = (p) => CAT.filter((c, i) => !punts.includes(c) && p(c5[i]));
+    const o5R = R[o5]; const o5Out = outKey(o5R);
+    const why_next = [nxC((w) => w >= 65).length ? `Should win ${list(nxC((w) => w >= 65))}.` : 'No clear category edges.',
+      nxC((w) => w <= 35).length ? `Should lose ${list(nxC((w) => w <= 35))}.` : '',
+      nw.your_games != null ? `${nw.your_games} player-games vs their ${nw.opp_games}.` : '',
+      o5Out.length ? `${names[o5]} is missing ${list(o5Out)}.` : ''].filter(Boolean).join(' ');
+    const logo = d.teams.find((t) => t.id === id).logo || '';
+    return { team: tn, slug: slug(tn), logo, why_now, why_next, record: rec(id), punts, nextweek_title: `Forecast: week ${WEEK + 1} vs ${names[o5]} (${DATES[WEEK + 1] || ''}): about ${nw.win_pct ?? '—'}%`, nextweek_note: `Early forecast with the current roster. Likely wins: ${nextweek.filter((x) => x.plan === 'Likely').map((x) => x.category).join(', ') || 'none'}; likely losses: ${nextweek.filter((x) => x.plan === 'Unlikely').map((x) => x.category).join(', ') || 'none'}. Rosters will change; this refreshes each update.`,
       today, moves, injuries, matchnotes, matchup, daygrid, lineup, opponent, strategy, outlook, nextweek, roster, waivers: wv, profiles, news };
   };
 
